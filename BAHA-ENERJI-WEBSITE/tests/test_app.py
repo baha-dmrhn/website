@@ -567,6 +567,9 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn("BAHA ENERJİ YÖNETİM PANELİ", html)
         self.assertIn("Enerjinin nabzı", html)
         self.assertIn("3</strong><span>entegre panel", html)
+        self.assertIn('class="mobile-topbar"', html)
+        self.assertIn('class="mobile-status"', html)
+        self.assertIn('class="mobile-panel-tags"', html)
         self.assertNotIn("BAHA UEVM", html)
         connection.close()
 
@@ -586,7 +589,7 @@ class SuiteHttpTests(unittest.TestCase):
         status, content, _ = self.get("/sw.js")
         worker = content.decode("utf-8")
         self.assertEqual(status, 200)
-        self.assertIn("baha-enerji-shell-v11", worker)
+        self.assertIn("baha-enerji-shell-v13", worker)
         self.assertNotIn("baha-uretim-logo.svg", worker)
 
         for path in (
@@ -604,6 +607,11 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("input::-ms-reveal", login_css)
         self.assertIn("input::-webkit-credentials-auto-fill-button", login_css)
+        self.assertIn("Mobil giriş: kurumsal kart", login_css)
+        self.assertIn(".mobile-status", login_css)
+        self.assertIn(".mobile-panel-tags", login_css)
+        self.assertIn("backdrop-filter: blur(16px)", login_css)
+        self.assertIn("overscroll-behavior: none", login_css)
         self.assertEqual(headers.get_content_type(), "text/css")
 
     def test_legacy_login_and_dashboard_paths_are_canonicalized(self):
@@ -664,7 +672,7 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn('href="/piyasa/styles.css?v=25"', html)
         self.assertIn('href="/piyasa/" aria-current="page"', html)
         self.assertIn('src="/piyasa-charts.js?v=8"', html)
-        self.assertIn('href="/piyasa-suite.css?v=14"', html)
+        self.assertIn('href="/piyasa-suite.css?v=19"', html)
         self.assertIn('src="/theme-sync.js"', html)
         self.assertIn('href="/piyasa/assets/apple-touch-icon.png"', html)
         self.assertNotIn("cdn.jsdelivr.net/npm/apexcharts", html)
@@ -763,7 +771,12 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn("writing-mode: horizontal-tb", css)
         self.assertIn(".baha-suite-piyasa .direction-hour span", css)
         self.assertIn(".baha-suite-piyasa .table th:last-child", css)
-        self.assertIn("min-width: 138px", css)
+        self.assertIn("min-width: 960px", css)
+        self.assertIn("min-width: 780px", css)
+        self.assertIn("padding-inline: 12px", css)
+        self.assertIn("table-layout: fixed", css)
+        self.assertIn("width: calc(100% / 6)", css)
+        self.assertIn("text-align: left", css)
         self.assertIn("white-space: nowrap", css)
         self.assertIn("display: inline-flex", css)
         self.assertIn('html[data-theme="dark"] .baha-suite-piyasa .direction.up', css)
