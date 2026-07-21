@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Baha Enerji</string>
+    <string name="title_activity_main">Baha Enerji</string>
+    <string name="package_name">com.bahaenerji.piyasa</string>
+    <string name="custom_url_scheme">com.bahaenerji.piyasa</string>
+</resources>
