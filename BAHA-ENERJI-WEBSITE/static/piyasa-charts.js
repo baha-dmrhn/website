@@ -86,7 +86,10 @@
       const width = Math.max(this.target.clientWidth || 760, 320);
       const configuredHeight = Number(this.options.chart?.height) || 320;
       const height = Math.max(configuredHeight, 230);
-      const margin = { top: 24, right: 22, bottom: 42, left: 72 };
+      const compact = width <= 700;
+      const margin = compact
+        ? { top: 20, right: 6, bottom: 42, left: 50 }
+        : { top: 24, right: 22, bottom: 42, left: 72 };
       const plotWidth = width - margin.left - margin.right;
       const plotHeight = height - margin.top - margin.bottom;
       const colors = this.options.colors || [
@@ -100,11 +103,33 @@
       const maximum = niceMaximum(rawMax * 1.08);
       const minimum = rawMin < 0 ? -niceMaximum(Math.abs(rawMin) * 1.08) : 0;
       const range = maximum - minimum || 1;
+      const labelStep = 3;
+      const labelIndexes = categories
+        .map((_, index) => index)
+        .filter(
+          (index) =>
+            index % labelStep === 0 || index === categories.length - 1,
+        );
+      const visualRatioFor = (index) => {
+        if (labelIndexes.length <= 1) return 0.5;
+        const rightPosition = labelIndexes.findIndex(
+          (labelIndex) => labelIndex >= index,
+        );
+        if (rightPosition <= 0) return 0;
+        const leftIndex = labelIndexes[rightPosition - 1];
+        const rightIndex = labelIndexes[rightPosition];
+        const withinSegment =
+          (index - leftIndex) / Math.max(rightIndex - leftIndex, 1);
+        return (
+          (rightPosition - 1 + withinSegment) /
+          (labelIndexes.length - 1)
+        );
+      };
       const xFor = (index) =>
         margin.left +
         (categories.length <= 1
           ? plotWidth / 2
-          : (index / (categories.length - 1)) * plotWidth);
+          : visualRatioFor(index) * plotWidth);
       const yFor = (value) =>
         margin.top + ((maximum - value) / range) * plotHeight;
 
@@ -163,15 +188,20 @@
         label.textContent = number.format(value);
         grid.append(label);
       }
-      const labelStep = Math.max(1, Math.ceil(categories.length / 8));
-      categories.forEach((category, index) => {
-        if (index % labelStep !== 0 && index !== categories.length - 1) return;
+      labelIndexes.forEach((index) => {
+        const category = categories[index];
+        const isLastLabel = index === categories.length - 1;
         const label = svgElement("text", {
           x: xFor(index),
           y: height - 13,
           fill: labelColor,
-          "font-size": "10",
-          "text-anchor": "middle",
+          "font-size": compact ? "9" : "10",
+          "text-anchor":
+            index === 0
+              ? "start"
+              : isLastLabel
+                ? "end"
+                : "middle",
         });
         label.textContent = String(category);
         grid.append(label);
@@ -221,11 +251,15 @@
       const pointFromEvent = (event) => {
         const bounds = svg.getBoundingClientRect();
         const svgX = ((event.clientX - bounds.left) / bounds.width) * width;
-        const ratio = Math.max(
-          0,
-          Math.min(1, (svgX - margin.left) / plotWidth),
-        );
-        const index = Math.round(ratio * (categories.length - 1));
+        let index = 0;
+        let closestDistance = Number.POSITIVE_INFINITY;
+        categories.forEach((_, candidateIndex) => {
+          const distance = Math.abs(xFor(candidateIndex) - svgX);
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            index = candidateIndex;
+          }
+        });
         const x = xFor(index);
         return { bounds, index, x };
       };
