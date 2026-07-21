@@ -1,4 +1,4 @@
-const CACHE_NAME = "baha-enerji-shell-v11";
+const CACHE_NAME = "baha-enerji-shell-v13";
 const STATIC_ASSETS = [
   "/login",
   "/login.css",
