@@ -1791,7 +1791,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 '<script src="/theme-sync.js"></script>'
             )
             if kind == "piyasa":
-                shell += '<link rel="stylesheet" href="/piyasa-suite.css?v=14">'
+                shell += '<link rel="stylesheet" href="/piyasa-suite.css?v=19">'
             elif kind in {"baraj", "uretim"}:
                 shell += '<link rel="stylesheet" href="/module-suite.css?v=9">'
             body_shell = _suite_navigation(kind)
