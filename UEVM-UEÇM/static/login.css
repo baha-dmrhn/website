@@ -214,6 +214,11 @@ h1 span {
   display: none;
 }
 
+.mobile-topbar,
+.mobile-panel-tags {
+  display: none;
+}
+
 .form-wrap {
   width: min(100%, 470px);
 }
@@ -682,5 +687,282 @@ h2 {
     min-height: 0;
     margin: 0;
     font-size: 8px;
+  }
+}
+
+/* Mobil giriş: kurumsal kart ve hafif enerji dokusu. */
+@media (max-width: 520px) {
+  .form-panel {
+    position: relative;
+    isolation: isolate;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px 16px 24px;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background:
+      radial-gradient(circle at 92% 4%, rgba(45, 112, 238, .16), transparent 31%),
+      radial-gradient(circle at 4% 96%, rgba(77, 211, 154, .11), transparent 28%),
+      linear-gradient(160deg, #f7faff 0%, #eef4ff 52%, #f8fbff 100%);
+  }
+
+  .form-panel::before,
+  .form-panel::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    border: 1px solid rgba(75, 125, 221, .12);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .form-panel::before {
+    width: 270px;
+    height: 270px;
+    top: -155px;
+    right: -105px;
+    box-shadow: 0 0 0 38px rgba(75, 125, 221, .035);
+  }
+
+  .form-panel::after {
+    width: 230px;
+    height: 230px;
+    left: -150px;
+    bottom: -120px;
+  }
+
+  .mobile-topbar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobile-brand {
+    display: inline-flex;
+    gap: 10px;
+    color: #10213d;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+  }
+
+  .mobile-logo {
+    width: 52px;
+    height: 52px;
+    padding: 5px;
+    border: 1px solid rgba(31, 67, 119, .08);
+    border-radius: 15px;
+    box-shadow: 0 12px 28px rgba(20, 49, 92, .14);
+  }
+
+  .mobile-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 9px;
+    border: 1px solid rgba(48, 174, 117, .2);
+    border-radius: 999px;
+    color: #16875a;
+    background: rgba(255, 255, 255, .68);
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 8px 20px rgba(17, 54, 96, .06);
+  }
+
+  .mobile-status i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #2fc681;
+    box-shadow: 0 0 0 4px rgba(47, 198, 129, .12);
+  }
+
+  .form-wrap {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin: 22px 0 0;
+    padding: 25px 20px 20px;
+    border: 1px solid rgba(205, 218, 238, .9);
+    border-radius: 23px;
+    background: rgba(255, 255, 255, .9);
+    box-shadow:
+      0 24px 60px rgba(24, 55, 101, .13),
+      inset 0 1px 0 rgba(255, 255, 255, .95);
+    backdrop-filter: blur(16px);
+  }
+
+  .form-wrap::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 58px;
+    height: 4px;
+    border-radius: 0 0 5px 5px;
+    background: linear-gradient(90deg, #2d70ee, #67a0ff);
+    transform: translateX(-50%);
+  }
+
+  .form-kicker {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    color: #2464d6;
+    background: #eaf1ff;
+    font-size: 8px;
+    line-height: 1;
+    letter-spacing: .14em;
+  }
+
+  h2 {
+    font-size: 30px;
+    line-height: 1.08;
+    letter-spacing: -.035em;
+  }
+
+  .form-subtitle {
+    margin: 7px 0 14px;
+    color: #687894;
+    font-size: 11px;
+    line-height: 1.45;
+    white-space: normal;
+  }
+
+  .mobile-panel-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 20px;
+  }
+
+  .mobile-panel-tags span {
+    padding: 6px 8px;
+    border: 1px solid #dce6f7;
+    border-radius: 8px;
+    color: #61728f;
+    background: #f7faff;
+    font-size: 9px;
+    font-weight: 650;
+  }
+
+  .login-field {
+    margin-bottom: 15px;
+  }
+
+  .login-field > span:first-child {
+    margin-bottom: 7px;
+    color: #253753;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .input-wrap input {
+    height: 47px;
+    padding: 0 42px 0 38px;
+    border-color: #d7e0ee;
+    border-radius: 12px;
+    background: rgba(250, 252, 255, .95);
+    font-size: 13px;
+  }
+
+  .input-glyph {
+    left: 12px;
+    width: 16px;
+    font-size: 14px;
+  }
+
+  .input-glyph-dot {
+    font-size: 16px;
+  }
+
+  .password-toggle {
+    right: 6px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .password-toggle svg {
+    width: 17px;
+  }
+
+  .login-error {
+    min-height: 17px;
+    margin: 0 0 7px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .login-submit {
+    height: 48px;
+    border-radius: 12px;
+    font-size: 13px;
+    box-shadow: 0 12px 24px rgba(45, 112, 238, .24);
+  }
+
+  .login-submit svg {
+    width: 17px;
+  }
+
+  .security-note {
+    margin-top: 15px;
+    color: #7d8ca3;
+    font-size: 9px;
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .security-note-icon {
+    font-size: 11px;
+  }
+
+  .install-button {
+    height: 39px;
+    margin-top: 13px;
+    border-color: #c9d9f7;
+    border-radius: 10px;
+    color: #2767d8;
+    background: #f7faff;
+    font-size: 11px;
+  }
+
+  .install-message {
+    min-height: 12px;
+    margin-top: 5px;
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 520px) and (max-height: 680px) {
+  .form-panel {
+    padding-top: 14px;
+  }
+
+  .mobile-logo {
+    width: 46px;
+    height: 46px;
+  }
+
+  .form-wrap {
+    margin-top: 14px;
+    padding-top: 20px;
+  }
+
+  .mobile-panel-tags {
+    margin-bottom: 14px;
+  }
+
+  .input-wrap input,
+  .login-submit {
+    height: 44px;
   }
 }
