@@ -610,6 +610,24 @@
   border-bottom: 1px solid #edf1f6;
 }
 
+.baha-suite-piyasa .table th:last-child,
+.baha-suite-piyasa .table td:last-child {
+  min-width: 138px;
+  white-space: nowrap;
+}
+
+.baha-suite-piyasa .direction {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1;
+}
+
 .baha-suite-piyasa .table tbody tr:hover {
   background: #f7faff;
 }
@@ -697,20 +715,23 @@ html[data-theme="dark"] .baha-suite-piyasa .table tbody tr:hover td {
 
 html[data-theme="dark"] .baha-suite-piyasa .direction {
   color: #b8c5d9;
-  background: #243249;
-  box-shadow: inset 0 0 0 1px #34445e;
+  border-color: rgba(166, 181, 204, .24);
+  background: rgba(128, 145, 171, .12);
+  box-shadow: none;
 }
 
 html[data-theme="dark"] .baha-suite-piyasa .direction.up {
   color: #69d9a6;
-  background: rgba(47, 182, 125, .18);
-  box-shadow: inset 0 0 0 1px rgba(77, 210, 153, .28);
+  border-color: rgba(77, 210, 153, .32);
+  background: rgba(47, 182, 125, .12);
+  box-shadow: none;
 }
 
 html[data-theme="dark"] .baha-suite-piyasa .direction.down {
   color: #ff9298;
-  background: rgba(239, 91, 98, .18);
-  box-shadow: inset 0 0 0 1px rgba(255, 125, 132, .25);
+  border-color: rgba(255, 125, 132, .3);
+  background: rgba(239, 91, 98, .12);
+  box-shadow: none;
 }
 
 html[data-theme="dark"] .baha-suite-piyasa .direction-hour.missing {
