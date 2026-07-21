@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: baha-enerji
+    name: baha-website
     runtime: docker
     plan: free
     region: frankfurt
