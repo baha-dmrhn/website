@@ -1,0 +1,11 @@
+{
+  "appId": "com.bahaenerji.piyasa",
+  "appName": "Baha Enerji",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
