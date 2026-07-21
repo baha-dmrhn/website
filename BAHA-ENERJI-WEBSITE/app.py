@@ -1714,7 +1714,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 text = text.replace(
                     '<script src="https://cdn.jsdelivr.net/npm/apexcharts@4.5.0/'
                     'dist/apexcharts.min.js"></script>',
-                    '<script src="/piyasa-charts.js?v=2"></script>',
+                    '<script src="/piyasa-charts.js?v=8"></script>',
                 )
                 text = text.replace(
                     '<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/'
@@ -1791,7 +1791,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 '<script src="/theme-sync.js"></script>'
             )
             if kind == "piyasa":
-                shell += '<link rel="stylesheet" href="/piyasa-suite.css?v=7">'
+                shell += '<link rel="stylesheet" href="/piyasa-suite.css?v=13">'
             elif kind in {"baraj", "uretim"}:
                 shell += '<link rel="stylesheet" href="/module-suite.css?v=9">'
             body_shell = _suite_navigation(kind)
