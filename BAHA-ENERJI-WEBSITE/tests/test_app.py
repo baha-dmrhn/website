@@ -663,8 +663,8 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn('id="piyasaFooterUpdated"', html)
         self.assertIn('href="/piyasa/styles.css?v=25"', html)
         self.assertIn('href="/piyasa/" aria-current="page"', html)
-        self.assertIn('src="/piyasa-charts.js?v=2"', html)
-        self.assertIn('href="/piyasa-suite.css?v=7"', html)
+        self.assertIn('src="/piyasa-charts.js?v=8"', html)
+        self.assertIn('href="/piyasa-suite.css?v=13"', html)
         self.assertIn('src="/theme-sync.js"', html)
         self.assertIn('href="/piyasa/assets/apple-touch-icon.png"', html)
         self.assertNotIn("cdn.jsdelivr.net/npm/apexcharts", html)
@@ -726,6 +726,17 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn("tooltip.offsetHeight", chart_script)
         self.assertIn("spaceAbove < tooltipHeight", chart_script)
         self.assertIn("tooltip.dataset.placement", chart_script)
+        self.assertIn("const compact = width <= 700", chart_script)
+        self.assertIn("const labelStep = 3", chart_script)
+        self.assertIn("const labelIndexes", chart_script)
+        self.assertIn("const visualRatioFor", chart_script)
+        self.assertIn("labelIndexes.length - 1", chart_script)
+        self.assertIn("closestDistance", chart_script)
+        self.assertIn('"font-size": compact ? "9" : "10"', chart_script)
+        self.assertIn(
+            "index % labelStep === 0 || index === categories.length - 1",
+            chart_script,
+        )
         self.assertEqual(headers.get_content_type(), "text/javascript")
 
         status, content, headers = self.get("/piyasa-suite.css")
@@ -745,6 +756,18 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn("transform: translateX(-105%)", css)
         self.assertIn("z-index: 100030", css)
         self.assertIn("display: grid !important", css)
+        self.assertIn("padding: 8px 0 16px", css)
+        self.assertIn(".baha-suite-piyasa #quantity-chart", css)
+        self.assertIn("margin-inline: -10px", css)
+        self.assertIn(".baha-suite-piyasa .direction-hour strong", css)
+        self.assertIn("writing-mode: horizontal-tb", css)
+        self.assertIn(".baha-suite-piyasa .direction-hour span", css)
+        self.assertIn('html[data-theme="dark"] .baha-suite-piyasa .direction.up', css)
+        self.assertIn('html[data-theme="dark"] .baha-suite-piyasa .direction.down', css)
+        self.assertIn(
+            'html[data-theme="dark"] .baha-suite-piyasa .direction-hour.missing',
+            css,
+        )
         self.assertIn('html[data-theme="dark"] .baha-suite-piyasa .menu-button', css)
         self.assertIn(".baha-suite-piyasa h1", css)
         self.assertIn("font-size: clamp(25px, 2.2vw, 36px)", css)
