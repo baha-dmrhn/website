@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Baha Enerji piyasa, baraj, üretim ve tüketim panelleri güvenli giriş ekranı."
+    />
+    <title>Giriş | Baha Enerji</title>
+    <link rel="icon" href="/suite-assets/icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/suite-assets/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0b1d39" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="stylesheet" href="/login.css" />
+  </head>
+  <body>
+    <main class="login-layout">
+      <section class="brand-panel" aria-labelledby="brandTitle">
+        <div class="brand-content">
+          <a class="login-brand" href="/login" aria-label="Baha Enerji">
+            <span class="login-logo">
+              <img src="/suite-assets/baha-logo.png" alt="Baha Enerji" />
+            </span>
+          </a>
+
+          <div class="brand-message">
+            <p class="eyebrow">BAHA ENERJİ YÖNETİM PANELİ</p>
+            <h1 id="brandTitle">Enerjinin nabzı,<br /><span>tek ekranda.</span></h1>
+            <p class="brand-copy">
+              Piyasa, Baraj Aktif, UEVM–UEÇM ve Gerçek Zamanlı Tüketim
+              verilerini tek bir güvenli panelden izleyin.
+            </p>
+          </div>
+        </div>
+
+        <div class="login-stats" aria-label="Panel özellikleri">
+          <div><strong>4</strong><span>entegre panel</span></div>
+          <div><strong>1</strong><span>ortak güvenli oturum</span></div>
+        </div>
+      </section>
+
+      <section class="form-panel">
+        <div class="mobile-topbar">
+          <a class="mobile-brand" href="/login" aria-label="Baha Enerji">
+            <span class="mobile-logo" aria-hidden="true">
+              <img src="/suite-assets/baha-logo.png" alt="" />
+            </span>
+            <span>Baha Enerji</span>
+          </a>
+          <span class="mobile-status"><i aria-hidden="true"></i>Güvenli erişim</span>
+        </div>
+
+        <div class="form-wrap">
+          <p class="form-kicker">GÜVENLİ ERİŞİM</p>
+          <h2>Tekrar hoş geldiniz</h2>
+          <p class="form-subtitle">
+            Tek girişle tüm Baha Enerji panellerine güvenle erişin.
+          </p>
+
+          <div class="mobile-panel-tags" aria-label="Erişilebilen paneller">
+            <span>Piyasa</span>
+            <span>Baraj Aktif</span>
+            <span>UEVM · UEÇM</span>
+            <span>Tüketim</span>
+          </div>
+
+          <form id="loginForm" novalidate>
+            <label class="login-field">
+              <span>EPİAŞ e-posta adresi</span>
+              <span class="input-wrap">
+                <i class="input-glyph" aria-hidden="true">@</i>
+                <input
+                  id="username"
+                  name="username"
+                  type="email"
+                  autocomplete="username"
+                  placeholder="ornek@firma.com"
+                  required
+                />
+              </span>
+            </label>
+
+            <label class="login-field">
+              <span>Şifre</span>
+              <span class="input-wrap">
+                <i class="input-glyph input-glyph-dot" aria-hidden="true">•</i>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="Şifreniz"
+                  required
+                />
+                <button
+                  class="password-toggle"
+                  id="passwordToggle"
+                  type="button"
+                  aria-label="Şifreyi göster"
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M2.5 10s2.7-4 7.5-4 7.5 4 7.5 4-2.7 4-7.5 4-7.5-4-7.5-4Z"></path>
+                    <circle cx="10" cy="10" r="2"></circle>
+                  </svg>
+                </button>
+              </span>
+            </label>
+
+            <p class="login-error" id="loginError" role="alert"></p>
+
+            <button class="login-submit" id="loginSubmit" type="submit">
+              <span>Panele giriş yap</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3 10h13M11 5l5 5-5 5"></path>
+              </svg>
+            </button>
+          </form>
+
+          <p class="security-note">
+            <span class="security-note-icon" aria-hidden="true">🔒</span>
+            EPİAŞ şifreniz diskte veya tarayıcıda saklanmaz.
+          </p>
+
+          <button class="install-button" id="installButton" type="button">
+            Uygulamayı telefona yükle
+          </button>
+          <p class="install-message" id="installMessage" role="status"></p>
+        </div>
+      </section>
+    </main>
+    <script src="/login.js" defer></script>
+  </body>
+</html>
