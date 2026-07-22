@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baha Aktif Baraj Doluluk Paneli</title>
+  <link rel="icon" type="image/png" href="/icons/icon-192.png">
+  <meta name="theme-color" content="#07539a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Baha Baraj Doluluk Paneli">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="192x192" href="/apple-touch-icon.png">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" rel="stylesheet">
+  <style>
+    :root { --baha-navy: #0b1d39; --baha-blue: #2d70ee; --baha-muted: #70809a; }
+    #loginScreen.login-screen { display: block !important; height: 100vh; min-height: 100vh; overflow: hidden; padding: 0; background: #fff; }
+    /* Tabler'ın d-none sınıfı login ekranını gerçekten gizleyebilsin. */
+    #loginScreen.login-screen.d-none { display: none !important; }
+    .login-layout { min-height: 100%; display: grid; grid-template-columns: 52.25% 47.75%; }
+    .login-brand-panel { position: relative; isolation: isolate; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: clamp(1.75rem, 4vw, 3.35rem) clamp(1.5rem, 6.8vw, 6rem); color: #fff; background: linear-gradient(145deg, #182f59 0%, var(--baha-navy) 72%); }
+    .login-brand-panel::before, .login-brand-panel::after { content: ""; position: absolute; z-index: -1; border: 1px solid rgba(101, 148, 236, .13); border-radius: 50%; pointer-events: none; }
+    .login-brand-panel::before { width: 58rem; height: 58rem; right: -31rem; bottom: -24rem; box-shadow: 0 0 0 6rem rgba(101, 148, 236, .035), 0 0 0 12rem rgba(101, 148, 236, .025); }
+    .login-brand-panel::after { width: 44rem; height: 44rem; right: -18rem; top: 8rem; }
+    .login-brand-content, .login-stats { position: relative; z-index: 1; }
+    .login-logo-card { display: flex; align-items: center; justify-content: center; width: 68px; height: 68px; margin-bottom: clamp(2rem, 8vh, 4.7rem); border-radius: 18px; background: #fff; box-shadow: 0 12px 28px rgba(0, 0, 0, .2); }
+    .login-logo-card img { width: 76px; height: 76px; object-fit: contain; }
+    .login-eyebrow, .login-kicker { margin: 0 0 1.25rem; color: #8eb2ff; font-size: .82rem; font-weight: 700; letter-spacing: .17em; }
+    .login-brand-title { max-width: 610px; margin: 0; color: #fff; font-size: clamp(3rem, 5.2vw, 5.5rem); font-weight: 400; letter-spacing: -.055em; line-height: .98; }
+    .login-brand-title span { color: #5f91ff; }
+    .login-brand-copy { max-width: 570px; margin: 2.2rem 0 0; color: #bdcbe5; font-size: clamp(1rem, 1.45vw, 1.25rem); line-height: 1.8; }
+    .login-stats { display: flex; gap: clamp(2rem, 5.3vw, 5.3rem); margin-top: 2.7rem; }
+    .login-stat-value { display: block; color: #fff; font-size: 1.5rem; font-weight: 700; line-height: 1; }
+    .login-stat-label { display: block; margin-top: .55rem; color: #8ea8d1; font-size: .75rem; }
+    .login-form-panel { display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; padding: clamp(2.7rem, 6.5vh, 5rem) clamp(1.5rem, 6.9vw, 5rem); background: #fff; }
+    .login-form-wrap { width: min(100%, 430px); }
+    .login-mobile-brand, .install-app-button { display: none; }
+    .login-kicker { color: var(--baha-blue); font-size: .9rem; font-weight: 700; }
+    .login-form-title { margin: 0; color: #0d1f3b; font-size: clamp(1.8rem, 2.7vw, 2.6rem); font-weight: 400; letter-spacing: -.045em; line-height: 1.05; }
+    .login-form-subtitle { margin: .5rem 0 1.8rem; color: #71809a; font-size: 1rem; font-weight: 400; }
+    .login-field { margin-bottom: 1.1rem; }
+    .login-field label { display: block; margin-bottom: .5rem; color: #132340; font-size: 1rem; font-weight: 500; }
+    .login-input-wrap { position: relative; }
+    .login-input-wrap .form-control { height: 52px; border: 1px solid #d9e1ed; border-radius: 11px; padding: 0 2.8rem 0 2.5rem; color: #152744; font-size: 1rem; font-weight: 400; box-shadow: 0 2px 5px rgba(23, 48, 86, .04); }
+    .login-input-wrap .form-control:focus { border-color: #80a9ff; box-shadow: 0 0 0 4px rgba(45, 112, 238, .12); }
+    .login-input-wrap .form-control::placeholder { color: #a1adbe; }
+    .login-input-symbol { position: absolute; z-index: 2; top: 50%; left: .8rem; color: #91a0b6; font-size: 1.1rem; line-height: 1; transform: translateY(-50%); pointer-events: none; }
+    .password-toggle { position: absolute; z-index: 2; top: 50%; right: .8rem; width: 1.35rem; height: 1.35rem; border: 0; color: #7486a4; background: transparent; font-size: 1.1rem; transform: translateY(-50%); }
+    .password-toggle:hover { color: var(--baha-blue); }
+    .login-submit { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; height: 53px; margin-top: 1.5rem; border: 0; border-radius: 11px; color: #fff; background: var(--baha-blue); font-size: 1rem; font-weight: 700; box-shadow: 0 10px 17px rgba(45, 112, 238, .2); transition: transform .2s ease, background .2s ease; }
+    .login-submit:hover { color: #fff; background: #2262d8; transform: translateY(-1px); }
+    .login-submit:disabled { opacity: .7; transform: none; }
+    .login-note { margin: 1.3rem 0 0; color: #8492a8; font-size: .8rem; font-weight: 400; text-align: center; }
+    .login-error { margin-top: 1rem; text-align: center; }
+    @media (max-width: 900px) {
+      html, body { min-width: 0; }
+      #loginScreen.login-screen { min-height: 100dvh; overflow-y: auto; scrollbar-width: none; }
+      #loginScreen.login-screen::-webkit-scrollbar { display: none; }
+      .login-layout { display: block; min-height: 100dvh; }
+      .login-brand-panel {
+        display: block;
+        min-height: auto;
+        padding: calc(2rem + env(safe-area-inset-top)) 1.375rem 0;
+        color: var(--baha-navy);
+        background: #fff;
+      }
+      .login-brand-panel::before, .login-brand-panel::after,
+      .login-eyebrow, .login-brand-title, .login-brand-copy, .login-stats { display: none; }
+      .login-logo-lockup { display: flex; align-items: center; gap: .65rem; }
+      .login-logo-card {
+        flex: 0 0 auto;
+        width: 2.125rem;
+        height: 2.25rem;
+        margin: 0;
+        border-radius: .65rem;
+        box-shadow: 0 .4rem 1rem rgba(18, 43, 78, .12);
+      }
+      .login-logo-card img { width: 2rem; height: 2rem; }
+      .login-mobile-brand { display: inline; color: #153054; font-size: .625rem; font-weight: 500; }
+      .login-form-panel {
+        display: block;
+        min-height: auto;
+        padding: 2.15rem 1.375rem calc(1.25rem + env(safe-area-inset-bottom));
+      }
+      .login-form-wrap { width: 100%; max-width: none; }
+      .login-kicker {
+        margin-bottom: .55rem;
+        font-size: .5rem;
+        letter-spacing: .16em;
+      }
+      .login-form-title { font-size: 1.5rem; line-height: 1.05; }
+      .login-form-subtitle { margin: .2rem 0 1.15rem; font-size: .675rem; line-height: 1.4; }
+      .login-field { margin-bottom: .75rem; }
+      #loginForm .login-field:nth-child(2) { margin-bottom: 0; }
+      .login-field label { margin-bottom: .4rem; font-size: .675rem; line-height: 1.25; }
+      .login-input-wrap .form-control {
+        height: 2.55rem;
+        border-radius: .55rem;
+        padding: 0 2.45rem 0 2rem;
+        font-size: .675rem;
+        box-shadow: 0 1px 3px rgba(23, 48, 86, .025);
+      }
+      .login-input-symbol { left: .65rem; font-size: .8rem; }
+      .password-toggle { right: .6rem; width: 1.2rem; height: 1.2rem; padding: 0; }
+      .password-toggle svg { display: block; width: 1rem; height: 1rem; }
+      .login-submit {
+        height: 2.55rem;
+        margin-top: 1.05rem;
+        border-radius: .48rem;
+        font-size: .675rem;
+        box-shadow: 0 .4rem .8rem rgba(45, 112, 238, .14);
+      }
+      .login-error { margin-top: .65rem; font-size: .65rem; }
+      .login-note { margin-top: 1rem; font-size: .5rem; }
+      .install-app-button {
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 2rem;
+        margin-top: .75rem;
+        border: 1px solid var(--baha-blue);
+        border-radius: .45rem;
+        color: #0861d8;
+        background: #fff;
+        font-size: .625rem;
+        font-weight: 500;
+      }
+      .install-app-button:not([hidden]) { display: flex; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loginScreen" class="page page-center login-screen">
+    <div class="login-layout">
+      <section class="login-brand-panel" aria-label="Baha Baraj tanıtımı">
+        <div class="login-brand-content">
+          <div class="login-logo-lockup">
+            <div class="login-logo-card"><img src="/icons/icon-192.png" width="76" height="76" alt="Baha Baraj logosu"></div>
+            <span class="login-mobile-brand">Baha Baraj</span>
+          </div>
+          <p class="login-eyebrow">BAHA BARAJ DOLULUK PANELİ</p>
+          <h1 class="login-brand-title">Baraj verileri,<br><span>tek ekranda.</span></h1>
+          <p class="login-brand-copy">EPİAŞ Şeffaflık Platformu verilerini sade, hızlı ve güvenli bir panelde takip edin.</p>
+        </div>
+        <div class="login-stats" aria-label="Panel özellikleri">
+          <div><span class="login-stat-value">Güncel</span><span class="login-stat-label">EPİAŞ verileri</span></div>
+          <div><span class="login-stat-value">4</span><span class="login-stat-label">kritik gösterge</span></div>
+        </div>
+      </section>
+      <section class="login-form-panel" aria-label="Giriş formu">
+        <div class="login-form-wrap">
+          <p class="login-kicker">GÜVENLİ ERİŞİM</p>
+          <h2 class="login-form-title">Tekrar hoş geldiniz</h2>
+          <p class="login-form-subtitle">EPİAŞ Şeffaflık Platformu hesabınızla devam edin.</p>
+          <form id="loginForm" autocomplete="on" novalidate>
+            <div class="login-field">
+              <label for="username">EPİAŞ e-posta adresi</label>
+              <div class="login-input-wrap"><span class="login-input-symbol" aria-hidden="true">@</span><input id="username" class="form-control" type="text" inputmode="email" autocomplete="username" placeholder="ornek@firma.com" required></div>
+            </div>
+            <div class="login-field">
+              <label for="password">Şifre</label>
+              <div class="login-input-wrap"><span class="login-input-symbol" aria-hidden="true">•</span><input id="password" class="form-control" type="password" autocomplete="current-password" placeholder="Şifreniz" required><button id="togglePassword" class="password-toggle" type="button" aria-label="Şifreyi göster" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 12s3.5-5 9.5-5 9.5 5 9.5 5-3.5 5-9.5 5-9.5-5-9.5-5Z"/><circle cx="12" cy="12" r="2.5"/></svg></button></div>
+            </div>
+            <div id="loginError" class="login-error text-danger small d-none"></div>
+            <button id="loginButton" class="login-submit" type="submit">Panele giriş yap <span aria-hidden="true">→</span></button>
+          </form>
+          <p class="login-note">🔒 EPİAŞ şifreniz diskte veya tarayıcıda saklanmaz.</p>
+          <button id="installButton" class="install-app-button" type="button" hidden>Uygulamayı telefona yükle</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="dashboard" class="page d-none">
+    <header class="navbar navbar-expand-md navbar-light"><div class="container-xl"><a class="navbar-brand d-flex align-items-center" href="#"><img src="/icons/icon-192.png" width="40" height="40" alt="Baha Baraj" class="me-2"><span>Baha Baraj</span></a><button id="logoutButton" class="btn btn-outline-secondary btn-sm" type="button">Çıkış yap</button></div></header>
+    <div class="page-wrapper"><div class="page-header"><div class="container-xl"><div class="row g-2 align-items-center"><div class="col"><h2 class="page-title">Baha Baraj Doluluk Paneli</h2></div><div class="col-auto ms-auto"><label class="baraj-date-control" for="barajDateSelect"><span>Görüntülenen tarih</span><select id="barajDateSelect" aria-label="Baraj verisi tarihini seç"><option value="">Güncel veri</option></select></label><button id="refreshButton" class="btn btn-primary" type="button">Verileri yenile</button></div></div></div></div>
+      <div class="page-body"><div class="container-xl"><div id="alert" class="alert d-none" role="alert"></div>
+        <div class="row row-deck row-cards mb-3"><div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="subheader">Toplam baraj</div><div id="total" class="h1 mb-0">-</div></div></div></div><div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="subheader" title="Baraj kapasiteleriyle ağırlıklandırılmamış aritmetik ortalama">Basit ort. doluluk</div><div id="average" class="h1 mb-0">-</div></div></div></div><div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="subheader">En yüksek</div><div id="highest" class="h3 mb-0">-</div></div></div></div><div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body"><div class="subheader">En düşük</div><div id="lowest" class="h3 mb-0">-</div></div></div></div></div>
+        <section id="baraj-compare" class="card baraj-compare-card mb-3">
+          <div class="card-header baraj-compare-header">
+            <div><div class="subheader">KARŞILAŞTIRMA</div><h3 class="card-title">Dolulukları yan yana inceleyin</h3></div>
+            <div class="baraj-compare-modes" role="group" aria-label="Karşılaştırma türü">
+              <button type="button" class="active" data-compare-mode="date" aria-pressed="true">Tarih</button>
+              <button type="button" data-compare-mode="basin" aria-pressed="false">Havza</button>
+              <button type="button" data-compare-mode="dam" aria-pressed="false">Baraj</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="baraj-compare-controls">
+              <label for="compareFirst"><span>Birinci seçim</span><select id="compareFirst" disabled><option>Veriler hazırlanıyor…</option></select></label>
+              <button id="compareSwap" class="baraj-compare-swap" type="button" aria-label="Seçimlerin yerini değiştir" title="Seçimlerin yerini değiştir" disabled>⇄</button>
+              <label for="compareSecond"><span>İkinci seçim</span><select id="compareSecond" disabled><option>Veriler hazırlanıyor…</option></select></label>
+            </div>
+            <div class="baraj-compare-results" aria-live="polite">
+              <article class="baraj-compare-option">
+                <span>01</span><h4 id="compareFirstTitle">Birinci seçim</h4><strong id="compareFirstValue">—</strong>
+                <div class="baraj-compare-meter"><i id="compareFirstMeter"></i></div>
+                <p id="compareFirstMeta">Veri bekleniyor</p><small id="compareFirstContext">—</small>
+              </article>
+              <div class="baraj-compare-difference">
+                <span>FARK</span><strong id="compareDelta">—</strong><b id="compareDirection">Seçimler karşılaştırılıyor</b><small id="compareRelative">—</small>
+              </div>
+              <article class="baraj-compare-option">
+                <span>02</span><h4 id="compareSecondTitle">İkinci seçim</h4><strong id="compareSecondValue">—</strong>
+                <div class="baraj-compare-meter"><i id="compareSecondMeter"></i></div>
+                <p id="compareSecondMeta">Veri bekleniyor</p><small id="compareSecondContext">—</small>
+              </article>
+            </div>
+          </div>
+        </section>
+        <section id="baraj-regime" class="card baraj-regime-card mb-3">
+          <div class="card-header baraj-regime-header">
+            <div><div class="subheader">HAVZA ANALİZİ</div><h3 class="card-title">Doluluk rejimi ve eğilim tahmini</h3></div>
+          </div>
+          <div class="card-body">
+            <div class="baraj-basin-toolbar">
+              <div class="baraj-basin-toolbar-copy"><span>İNCELENECEK HAVZA</span><strong id="basinToolbarPeriod">24 Haziran’dan bugüne doluluk geçmişi</strong></div>
+              <label class="baraj-basin-control" for="basinSelect"><span class="baraj-basin-label">Havza seçimi</span><span class="baraj-basin-select-wrap"><select id="basinSelect" aria-label="Doluluk rejimi gösterilecek havzayı seç" disabled><option value="">Havzalar yükleniyor…</option></select></span></label>
+            </div>
+            <section id="basin-risk" class="baraj-risk-card" aria-labelledby="basinRiskTitle">
+              <div class="baraj-risk-head">
+                <div><span>HAVZA RİSK SIRALAMASI</span><h4 id="basinRiskTitle">Öncelikli havzalar</h4></div>
+                <small id="basinRiskMeta">Riskler hesaplanıyor…</small>
+              </div>
+              <div class="baraj-risk-table-wrap">
+                <table class="baraj-risk-table">
+                  <thead><tr><th>#</th><th>Havza</th><th>Risk</th><th>Son doluluk</th><th>Günlük eğilim</th><th>%30 kritik seviye</th></tr></thead>
+                  <tbody id="basinRiskBody"><tr><td colspan="6">Havza riskleri hazırlanıyor…</td></tr></tbody>
+                </table>
+              </div>
+              <p>Risk sırası; güncel basit ortalama doluluk, günlük düşüş hızı ve %30 kritik seviyeye tahmini süre birlikte değerlendirilerek oluşturulur.</p>
+            </section>
+            <section id="baraj-map" class="baraj-map-card" aria-labelledby="basinMapTitle">
+              <div class="baraj-map-head">
+                <div><span>TÜRKİYE HAVZA HARİTASI</span><h4 id="basinMapTitle">Haritadan havza seçin</h4></div>
+                <div class="baraj-map-head-actions">
+                  <small id="basinMapMeta">Havza verileri hazırlanıyor…</small>
+                  <button id="basinMapPanelToggle" class="baraj-map-panel-toggle" type="button" aria-controls="basinMapDetail" aria-expanded="true"><span>Paneli gizle</span><b aria-hidden="true">›</b></button>
+                </div>
+              </div>
+              <div class="baraj-map-layout">
+                <div class="baraj-map-stage" aria-label="Türkiye havza seçim haritası">
+                  <svg id="turkeyMapShape" viewBox="0 0 1000 430" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Türkiye'nin gerçek havza sınırları"></svg>
+                  <span class="baraj-map-sea black-sea">KARADENİZ</span>
+                  <span class="baraj-map-sea mediterranean">AKDENİZ</span>
+                </div>
+                <aside id="basinMapDetail" class="baraj-map-detail" aria-live="polite">
+                  <span>SEÇİLİ HAVZA</span>
+                  <h5 id="basinMapSelected">Havza seçimi bekleniyor</h5>
+                  <p id="basinMapSelectedMeta">Haritadaki bir havza alanına dokunun.</p>
+                  <div id="basinMapDams" class="baraj-map-dams"><div class="baraj-map-empty">Barajlar yükleniyor…</div></div>
+                </aside>
+              </div>
+              <p class="baraj-map-note">Sınırlar, T.C. Tarım ve Orman Bakanlığı CBS havza katmanından alınmıştır. Renkli bir havzaya tıkladığınızda rejim grafiği ve baraj geçmişi aynı havzaya geçer.</p>
+            </section>
+            <div class="baraj-regime-metrics">
+              <div><span>Son basit ortalama</span><strong id="basinLatest">—</strong><small id="basinLatestDate">Veri bekleniyor</small></div>
+              <div><span>Dönem değişimi</span><strong id="basinChange">—</strong><small id="basinPeriod">24 Haziran’dan bugüne</small></div>
+              <div><span>Rejim</span><strong id="basinRegime">—</strong><small id="basinSlope">Günlük eğilim hesaplanıyor</small></div>
+              <div><span>Deneysel tükenme</span><strong id="basinDepletion">—</strong><small id="basinConfidence">Yeterli veri bekleniyor</small></div>
+            </div>
+            <div class="baraj-regime-chart-head"><div><span>BASİT ORTALAMA AKTİF DOLULUK</span><b id="basinChartTitle">Havza seçin</b></div><span id="basinChartRange"></span></div>
+            <div id="basinRegimeChart" class="baraj-regime-chart" role="img" aria-label="Seçili havzanın tarihe göre aktif doluluk grafiği"><div class="baraj-chart-empty">Havza verileri hazırlanıyor…</div></div>
+            <section class="baraj-basin-detail" aria-labelledby="basinDamTitle">
+              <div class="baraj-basin-detail-head">
+                <div><span>BARAJ BAZINDA GEÇMİŞ</span><h4 id="basinDamTitle">Seçili havzadaki aktif doluluklar</h4><small id="basinDamMeta">Havza seçimi bekleniyor</small></div>
+                <button id="basinXlsxButton" class="baraj-export-button" type="button" disabled><span aria-hidden="true">↓</span> HAVZAYI XLSX İNDİR</button>
+              </div>
+              <div class="baraj-basin-table-wrap">
+                <table class="baraj-basin-table">
+                  <thead><tr><th>Tarih</th><th>Baraj</th><th>Aktif doluluk</th><th>Veri kaynağı</th></tr></thead>
+                  <tbody id="basinDamTableBody"><tr><td colspan="4">Havza verileri hazırlanıyor…</td></tr></tbody>
+                </table>
+              </div>
+            </section>
+            <p id="basinMethodNote" class="baraj-method-note"></p>
+          </div>
+        </section>
+        <div class="card"><div class="card-header"><h3 class="card-title">Baraj listesi</h3><div class="baraj-table-tools"><label class="baraj-sort-control" for="sortSelect"><span>Sırala</span><select id="sortSelect" aria-label="Baraj listesini sırala"><option value="fullness-desc">Doluluk: yüksekten düşüğe</option><option value="fullness-asc">Doluluk: düşükten yükseğe</option><option value="name-asc">Baraj adı: A–Z</option><option value="name-desc">Baraj adı: Z–A</option></select></label><button id="barajXlsxButton" class="baraj-export-button" type="button" disabled><span aria-hidden="true">↓</span> XLSX İNDİR</button><div id="status" class="card-actions text-secondary"></div></div></div><div class="table-responsive"><table class="table table-vcenter card-table table-striped"><thead><tr><th>Baraj</th><th>Havza</th><th>Aktif doluluk</th><th>Veri tarihi</th></tr></thead><tbody id="tableBody"></tbody></table></div></div>
+        <p class="text-secondary mt-3 small">EPİAŞ baraj verileri günlük yayımlanır. Oturum, 30 dakika işlem yapılmadığında kapanır.</p>
+      </div></div>
+    </div>
+  </div>
+  <script>
+    const $ = id => document.getElementById(id), number = new Intl.NumberFormat('tr-TR', {maximumFractionDigits: 2});
+    const damCollator = new Intl.Collator('tr-TR', {sensitivity: 'base', numeric: true});
+    let currentItems = [], basinHistoryPayload = null, basinGeoJson = null, comparisonMode = 'date';
+    const barajConnection = {primary:'idle', basin:'idle', primaryDetail:'', basinDetail:''};
+    const knownDates = new Set(), archiveDates = new Set();
+    const showLogin = () => { $('password').value=''; $('password').type='password'; $('togglePassword').setAttribute('aria-label','Şifreyi göster'); $('togglePassword').setAttribute('aria-pressed','false'); $('loginError').classList.add('d-none'); $('loginScreen').classList.remove('d-none'); $('dashboard').classList.add('d-none'); };
+    const showDashboard = () => { $('loginScreen').classList.add('d-none'); $('dashboard').classList.remove('d-none'); load(); loadBasinGeoJson(); loadBasinHistory(); };
+    function alert(message, kind) { const el = $('alert'); el.textContent = message; el.className = `alert alert-${kind}`; }
+    function setConnectionState(state = 'live', detail = '') { document.body.dataset.epiasState = state; document.body.dataset.epiasDetail = detail; window.dispatchEvent(new CustomEvent('baha:connectionstate', {detail:{state,message:detail}})); }
+    function setBarajConnectionPart(part, state, detail = '') { barajConnection[part] = state; barajConnection[`${part}Detail`] = detail; const details = [barajConnection.primaryDetail, barajConnection.basinDetail].filter(Boolean).join(' · '); if (barajConnection.primary === 'error') setConnectionState('error', details); else if (barajConnection.primary === 'warning' || barajConnection.basin === 'warning' || barajConnection.basin === 'error') setConnectionState('warning', details); else if (barajConnection.primary === 'loading' || barajConnection.basin === 'loading' || barajConnection.primary === 'idle' || barajConnection.basin === 'idle') setConnectionState('loading', details || 'Baraj verileri alınıyor'); else setConnectionState('live', details || 'Baraj verileri doğrulandı'); }
+    function clearBarajOverview(message = 'Baraj verileri alınamadı.') { currentItems = []; ['total','average','highest','lowest'].forEach(id => $(id).textContent = '—'); render([]); $('barajXlsxButton').disabled = true; $('status').textContent = message; const footer = $('barajFooterUpdated'); if (footer) footer.textContent = '—'; }
+    function summary(items) { const valid = items.filter(x => Number.isFinite(Number(x.activeFullnessAmount))), sorted = [...valid].sort((a,b) => b.activeFullnessAmount-a.activeFullnessAmount); $('total').textContent = number.format(items.length); $('average').textContent = valid.length ? `%${number.format(valid.reduce((s,x)=>s+Number(x.activeFullnessAmount),0)/valid.length)}` : '-'; $('highest').textContent = sorted.length ? `${sorted[0].dam} · %${number.format(sorted[0].activeFullnessAmount)}` : '-'; $('lowest').textContent = sorted.length ? `${sorted.at(-1).dam} · %${number.format(sorted.at(-1).activeFullnessAmount)}` : '-'; }
+    const fullnessValue = item => {
+      const value = Number(item?.activeFullnessAmount);
+      return item?.activeFullnessAmount !== null && item?.activeFullnessAmount !== '' && Number.isFinite(value) ? value : null;
+    };
+    function sortedItems(items) {
+      const mode = $('sortSelect').value;
+      return [...items].sort((a, b) => {
+        const nameOrder = damCollator.compare(a.dam || '', b.dam || '');
+        if (mode === 'name-asc') return nameOrder;
+        if (mode === 'name-desc') return -nameOrder;
+        const aValue = fullnessValue(a), bValue = fullnessValue(b);
+        if (aValue === null || bValue === null) {
+          if (aValue === null && bValue === null) return nameOrder;
+          return aValue === null ? 1 : -1;
+        }
+        const valueOrder = mode === 'fullness-asc' ? aValue - bValue : bValue - aValue;
+        return valueOrder || nameOrder;
+      });
+    }
+    function updateListStatus() {
+      const option = $('sortSelect').selectedOptions[0];
+      $('status').textContent = `${currentItems.length} kayıt · ${option ? option.textContent : ''}`;
+    }
+    const displayDate = value => String(value || '').split('-').reverse().join('.');
+    function comparisonDataset(mode = comparisonMode) {
+      const basins = basinHistoryPayload?.basins || [];
+      if (mode === 'basin') {
+        return basins.map(basin => {
+          const latest = (basin.points || []).at(-1);
+          if (!latest || !Number.isFinite(Number(latest.average))) return null;
+          return {
+            key: basin.name,
+            label: basin.name,
+            value: Number(latest.average),
+            meta: `${displayDate(latest.date)} · ${latest.damCount || basin.dams?.length || 0} baraj`,
+            context: basin.analysis?.regime || 'Havza basit ortalaması'
+          };
+        }).filter(Boolean).sort((a, b) => damCollator.compare(a.label, b.label));
+      }
+      if (mode === 'dam') {
+        return basins.flatMap(basin => (basin.dams || []).map(dam => {
+          const latest = (dam.points || []).at(-1);
+          if (!latest || !Number.isFinite(Number(latest.activeFullnessAmount))) return null;
+          return {
+            key: `${basin.name}::${dam.name}`,
+            label: dam.name,
+            optionLabel: `${dam.name} · ${basin.name}`,
+            value: Number(latest.activeFullnessAmount),
+            meta: `${displayDate(latest.date)} · ${latest.source || 'Veri kaynağı bilinmiyor'}`,
+            context: basin.name
+          };
+        })).filter(Boolean).sort((a, b) => damCollator.compare(a.label, b.label));
+      }
+      const dates = new Map();
+      basins.forEach(basin => (basin.dams || []).forEach(dam => (dam.points || []).forEach(point => {
+        const value = Number(point.activeFullnessAmount);
+        if (!point.date || !Number.isFinite(value)) return;
+        if (!dates.has(point.date)) dates.set(point.date, {values: [], sources: new Set()});
+        const bucket = dates.get(point.date);
+        bucket.values.push(value);
+        if (point.source) bucket.sources.add(point.source);
+      })));
+      return [...dates.entries()].map(([date, bucket]) => ({
+        key: date,
+        label: displayDate(date),
+        value: bucket.values.reduce((sum, value) => sum + value, 0) / bucket.values.length,
+        meta: `${bucket.values.length} baraj · ${[...bucket.sources].join(' + ') || 'Kaynak bilinmiyor'}`,
+        context: 'Türkiye geneli basit ortalama'
+      })).sort((a, b) => b.key.localeCompare(a.key));
+    }
+    function setComparisonCard(prefix, item) {
+      $(`compare${prefix}Title`).textContent = item?.label || 'Seçim bulunamadı';
+      $(`compare${prefix}Value`).textContent = item ? `%${number.format(item.value)}` : '—';
+      $(`compare${prefix}Meta`).textContent = item?.meta || 'Veri bulunamadı';
+      $(`compare${prefix}Context`).textContent = item?.context || '—';
+      $(`compare${prefix}Meter`).style.width = item ? `${Math.max(0, Math.min(100, item.value))}%` : '0%';
+    }
+    function renderComparison() {
+      const items = comparisonDataset();
+      const first = items.find(item => item.key === $('compareFirst').value);
+      const second = items.find(item => item.key === $('compareSecond').value);
+      setComparisonCard('First', first);
+      setComparisonCard('Second', second);
+      const deltaNode = $('compareDelta'), directionNode = $('compareDirection'), relativeNode = $('compareRelative');
+      deltaNode.className = '';
+      if (!first || !second) {
+        deltaNode.textContent = '—';
+        directionNode.textContent = 'Karşılaştırılabilir veri bulunamadı';
+        relativeNode.textContent = '—';
+        return;
+      }
+      const delta = second.value - first.value;
+      const relative = first.value ? delta / first.value * 100 : null;
+      deltaNode.textContent = `${delta >= 0 ? '+' : '−'}%${number.format(Math.abs(delta))} puan`;
+      deltaNode.className = delta > .005 ? 'positive' : delta < -.005 ? 'negative' : 'neutral';
+      directionNode.textContent = Math.abs(delta) <= .005
+        ? 'İki seçim aynı seviyede'
+        : `İkinci seçim %${number.format(Math.abs(delta))} puan ${delta > 0 ? 'daha yüksek' : 'daha düşük'}`;
+      relativeNode.textContent = Number.isFinite(relative)
+        ? `Göreli değişim ${relative >= 0 ? '+' : '−'}%${number.format(Math.abs(relative))}`
+        : 'Göreli değişim hesaplanamadı';
+    }
+    function populateComparison(preserve = false) {
+      const items = comparisonDataset();
+      const firstSelect = $('compareFirst'), secondSelect = $('compareSecond');
+      const previousFirst = preserve ? firstSelect.value : '';
+      const previousSecond = preserve ? secondSelect.value : '';
+      [firstSelect, secondSelect].forEach(select => {
+        select.replaceChildren();
+        items.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.key;
+          option.textContent = item.optionLabel || item.label;
+          select.append(option);
+        });
+        select.disabled = items.length === 0;
+      });
+      firstSelect.value = items.some(item => item.key === previousFirst) ? previousFirst : (items[0]?.key || '');
+      secondSelect.value = items.some(item => item.key === previousSecond) ? previousSecond : (items[1]?.key || items[0]?.key || '');
+      $('compareSwap').disabled = items.length < 2;
+      renderComparison();
+    }
+    function setComparisonMode(mode) {
+      if (!['date', 'basin', 'dam'].includes(mode)) return;
+      comparisonMode = mode;
+      document.querySelectorAll('[data-compare-mode]').forEach(button => {
+        const active = button.dataset.compareMode === mode;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      populateComparison(false);
+    }
+    function updateDateOptions(payload) {
+      (payload.availableDates || []).forEach(value => knownDates.add(value));
+      (payload.archiveDates || []).forEach(value => archiveDates.add(value));
+      if (payload.selectedDate) knownDates.add(payload.selectedDate);
+      const select = $('barajDateSelect');
+      select.replaceChildren();
+      [...knownDates].sort().reverse().forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = displayDate(value);
+        select.append(option);
+      });
+      const fallback = payload.selectedDate || [...knownDates].sort().at(-1) || '';
+      select.value = fallback;
+    }
+    const isoDay = value => new Date(`${value}T12:00:00`).getTime();
+    function renderBasinChart(points, analysis) {
+      const chart = $('basinRegimeChart');
+      if (!points?.length) {
+        chart.innerHTML = '<div class="baraj-chart-empty">Bu havza için doluluk geçmişi bulunamadı.</div>';
+        return;
+      }
+      const width = 920, height = 280, left = 50, right = 18, top = 18, bottom = 38;
+      const values = points.map(point => Number(point.average)).filter(Number.isFinite);
+      const yMax = Math.max(100, Math.ceil(Math.max(...values) / 10) * 10);
+      const startTime = isoDay(points[0].date), endTime = isoDay(points.at(-1).date);
+      const timeSpan = Math.max(86400000, endTime - startTime);
+      const x = selectedDate => left + (isoDay(selectedDate) - startTime) / timeSpan * (width - left - right);
+      const y = value => top + (yMax - Math.max(0, Math.min(yMax, value))) / yMax * (height - top - bottom);
+      const linePoints = points.map(point => `${x(point.date).toFixed(1)},${y(point.average).toFixed(1)}`).join(' ');
+      const areaPoints = `${left},${height-bottom} ${linePoints} ${width-right},${height-bottom}`;
+      const gridValues = [0, yMax * .25, yMax * .5, yMax * .75, yMax];
+      const grid = gridValues.map(value => `<g><line x1="${left}" y1="${y(value)}" x2="${width-right}" y2="${y(value)}"/><text x="${left-10}" y="${y(value)+4}" text-anchor="end">%${number.format(value)}</text></g>`).join('');
+      const dots = points.map(point => `<circle cx="${x(point.date)}" cy="${y(point.average)}" r="4"><title>${displayDate(point.date)} · %${number.format(point.average)} · ${point.damCount} baraj</title></circle>`).join('');
+      const trend = Number.isFinite(analysis?.trendStart) && Number.isFinite(analysis?.trendEnd)
+        ? `<line class="baraj-trend-line" x1="${left}" y1="${y(analysis.trendStart)}" x2="${width-right}" y2="${y(analysis.trendEnd)}"/>`
+        : '';
+      const middle = points[Math.floor((points.length - 1) / 2)];
+      chart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="basinArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2d70ee" stop-opacity=".22"/><stop offset="100%" stop-color="#2d70ee" stop-opacity=".02"/></linearGradient></defs><g class="baraj-chart-grid">${grid}</g><polygon class="baraj-chart-area" points="${areaPoints}"/><polyline class="baraj-chart-line" points="${linePoints}"/>${trend}<g class="baraj-chart-dots">${dots}</g><g class="baraj-chart-labels"><text x="${left}" y="${height-10}">${displayDate(points[0].date)}</text><text x="${x(middle.date)}" y="${height-10}" text-anchor="middle">${displayDate(middle.date)}</text><text x="${width-right}" y="${height-10}" text-anchor="end">${displayDate(points.at(-1).date)}</text></g></svg>`;
+    }
+    const MAP_NAMESPACE = 'http://www.w3.org/2000/svg';
+    const MAP_BOUNDS = {minLongitude:26.03669, maxLongitude:44.82691, minLatitude:35.81352, maxLatitude:42.10682};
+    const BASIN_SHORT_NAMES = {
+      'Meriç-Ergene':'Meriç', 'Küçük Menderes':'Küçük M.', 'Büyük Menderes':'Büyük M.',
+      'Batı Akdeniz':'Batı Akd.', 'Doğu Akdeniz':'Doğu Akd.', 'Batı Karadeniz':'Batı Kar.',
+      'Doğu Karadeniz':'Doğu Kar.', 'Konya Kapalı':'Konya', 'Van Gölü':'Van Gölü'
+    };
+    const normalizeBasinName = value => String(value || '').toLocaleLowerCase('tr-TR').replace(/[^a-zçğıöşü0-9]+/g, ' ').trim();
+    const projectTurkeyPoint = ([longitude, latitude]) => ({
+      x: 30 + (longitude - MAP_BOUNDS.minLongitude) / (MAP_BOUNDS.maxLongitude - MAP_BOUNDS.minLongitude) * 940,
+      y: 28 + (MAP_BOUNDS.maxLatitude - latitude) / (MAP_BOUNDS.maxLatitude - MAP_BOUNDS.minLatitude) * 374
+    });
+    const geometryRings = geometry => geometry?.type === 'Polygon'
+      ? geometry.coordinates
+      : geometry?.type === 'MultiPolygon'
+        ? geometry.coordinates.flat()
+        : [];
+    const geometryOuterRings = geometry => geometry?.type === 'Polygon'
+      ? [geometry.coordinates[0]]
+      : geometry?.type === 'MultiPolygon'
+        ? geometry.coordinates.map(polygon => polygon[0])
+        : [];
+    const geometryPath = geometry => geometryRings(geometry).map(ring => `${ring.map((point, index) => {
+      const projected = projectTurkeyPoint(point);
+      return `${index ? 'L' : 'M'}${projected.x.toFixed(2)},${projected.y.toFixed(2)}`;
+    }).join(' ')} Z`).join(' ');
+    function polygonLabelPoint(feature) {
+      const rings = geometryOuterRings(feature.geometry);
+      const ringArea = ring => Math.abs(ring.reduce((total, point, index) => {
+        const next = ring[(index + 1) % ring.length];
+        return total + point[0] * next[1] - next[0] * point[1];
+      }, 0));
+      const ring = [...rings].sort((first, second) => ringArea(second) - ringArea(first))[0] || [];
+      if (!ring.length) return {x:500,y:215};
+      let twiceArea = 0, longitudeTotal = 0, latitudeTotal = 0;
+      ring.forEach((point, index) => {
+        const next = ring[(index + 1) % ring.length], cross = point[0] * next[1] - next[0] * point[1];
+        twiceArea += cross;
+        longitudeTotal += (point[0] + next[0]) * cross;
+        latitudeTotal += (point[1] + next[1]) * cross;
+      });
+      if (Math.abs(twiceArea) < .000001) return projectTurkeyPoint(ring[0]);
+      return projectTurkeyPoint([longitudeTotal / (3 * twiceArea), latitudeTotal / (3 * twiceArea)]);
+    }
+    async function loadBasinGeoJson() {
+      if (basinGeoJson) return;
+      try {
+        const response = await fetch('/turkiye-havzalari.geojson', {credentials:'same-origin', cache:'force-cache'});
+        if (!response.ok) throw new Error('Havza sınırları yüklenemedi.');
+        const payload = await response.json();
+        if (payload?.type !== 'FeatureCollection' || !Array.isArray(payload.features)) throw new Error('Havza sınırı dosyası geçersiz.');
+        basinGeoJson = payload;
+        const selected = basinHistoryPayload?.basins?.find(item => item.name === $('basinSelect').value) || null;
+        renderBasinMap(selected);
+      } catch (error) {
+        $('basinMapMeta').textContent = error.message || 'Havza sınırları yüklenemedi.';
+        const svg = $('turkeyMapShape');
+        svg.replaceChildren();
+        const text = document.createElementNS(MAP_NAMESPACE, 'text');
+        text.setAttribute('class', 'baraj-map-load-error');
+        text.setAttribute('x', '500'); text.setAttribute('y', '215'); text.setAttribute('text-anchor', 'middle');
+        text.textContent = 'Gerçek havza haritası yüklenemedi';
+        svg.append(text);
+      }
+    }
+    function latestDamValue(dam) {
+      return [...(dam?.points || [])].reverse().find(point => Number.isFinite(Number(point.activeFullnessAmount))) || null;
+    }
+    function setBasinMapPanel(open) {
+      const card = $('baraj-map'), detail = $('basinMapDetail'), toggle = $('basinMapPanelToggle');
+      card.classList.toggle('map-panel-collapsed', !open);
+      detail.setAttribute('aria-hidden', String(!open));
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.querySelector('span').textContent = open ? 'Paneli gizle' : 'Paneli göster';
+      toggle.querySelector('b').textContent = open ? '›' : '‹';
+    }
+    function renderBasinMap(selected) {
+      const basins = basinHistoryPayload?.basins || [], svg = $('turkeyMapShape');
+      const basinData = new Map(basins.map(basin => [normalizeBasinName(basin.name), basin]));
+      svg.replaceChildren();
+      if (!basinGeoJson?.features?.length) {
+        const loading = document.createElementNS(MAP_NAMESPACE, 'text');
+        loading.setAttribute('class', 'baraj-map-load-error');
+        loading.setAttribute('x', '500'); loading.setAttribute('y', '215'); loading.setAttribute('text-anchor', 'middle');
+        loading.textContent = 'Gerçek havza sınırları yükleniyor…';
+        svg.append(loading);
+      } else {
+        [...basinGeoJson.features].sort((first, second) => Number(first.properties?.ID || 0) - Number(second.properties?.ID || 0)).forEach(feature => {
+          const geoName = String(feature.properties?.HAVZA_ADI || feature.properties?.ETIKET || 'Havza').trim();
+          const basin = basinData.get(normalizeBasinName(geoName));
+          const latest = (basin?.points || []).at(-1), average = Number(latest?.average);
+          const group = document.createElementNS(MAP_NAMESPACE, 'g');
+          group.setAttribute('class', `baraj-basin-feature${basin ? ' has-data' : ' no-data'}${selected?.name === basin?.name ? ' active' : ''}`);
+          group.dataset.basin = geoName;
+          group.setAttribute('role', 'button');
+          group.setAttribute('aria-label', basin
+            ? `${geoName} havzasını seç${Number.isFinite(average) ? `, doluluk yüzde ${number.format(average)}` : ''}`
+            : `${geoName} havzası, baraj verisi bulunmuyor`);
+          group.setAttribute('aria-disabled', String(!basin));
+          if (basin) group.setAttribute('tabindex', '0');
+          const path = document.createElementNS(MAP_NAMESPACE, 'path');
+          path.setAttribute('class', 'baraj-basin-shape');
+          path.setAttribute('d', geometryPath(feature.geometry));
+          path.setAttribute('fill-rule', 'evenodd');
+          if (Number.isFinite(average)) {
+            const lightness = 78 - Math.max(0, Math.min(100, average)) * .24;
+            path.style.setProperty('--basin-fill', `hsl(211 78% ${lightness}%)`);
+          }
+          const title = document.createElementNS(MAP_NAMESPACE, 'title');
+          title.textContent = basin
+            ? `${geoName} · ${Number.isFinite(average) ? `%${number.format(average)}` : 'Doluluk verisi yok'} · ${basin.dams?.length || 0} baraj`
+            : `${geoName} · EPİAŞ baraj verisi bulunmuyor`;
+          path.append(title);
+          const labelPoint = polygonLabelPoint(feature);
+          const label = document.createElementNS(MAP_NAMESPACE, 'text');
+          label.setAttribute('class', 'baraj-basin-map-label');
+          label.setAttribute('x', labelPoint.x); label.setAttribute('y', labelPoint.y - 3); label.setAttribute('text-anchor', 'middle');
+          const nameLine = document.createElementNS(MAP_NAMESPACE, 'tspan');
+          nameLine.setAttribute('x', labelPoint.x); nameLine.textContent = BASIN_SHORT_NAMES[geoName] || geoName;
+          const valueLine = document.createElementNS(MAP_NAMESPACE, 'tspan');
+          valueLine.setAttribute('class', 'baraj-basin-map-value'); valueLine.setAttribute('x', labelPoint.x); valueLine.setAttribute('dy', '12');
+          valueLine.textContent = Number.isFinite(average) ? `%${number.format(average)}` : 'veri yok';
+          label.append(nameLine, valueLine);
+          const activate = () => {
+            if (!basin) return;
+            $('basinSelect').value = basin.name;
+            renderBasinHistory();
+          };
+          group.addEventListener('click', activate);
+          group.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault(); activate();
+          });
+          group.append(path, label); svg.append(group);
+        });
+      }
+      $('basinMapMeta').textContent = basinGeoJson?.features?.length
+        ? `${basinGeoJson.features.length} gerçek havza sınırı · ${basins.length} havzada baraj verisi`
+        : 'Gerçek havza sınırları hazırlanıyor…';
+      $('basinMapSelected').textContent = selected?.name || 'Havza seçimi bekleniyor';
+      const detail = $('basinMapDams');
+      detail.replaceChildren();
+      const dams = (selected?.dams || []).map(dam => ({dam, latest: latestDamValue(dam)}))
+        .sort((a, b) => {
+          const first = Number(a.latest?.activeFullnessAmount), second = Number(b.latest?.activeFullnessAmount);
+          if (Number.isFinite(first) && Number.isFinite(second)) return second - first;
+          if (Number.isFinite(first)) return -1;
+          if (Number.isFinite(second)) return 1;
+          return damCollator.compare(a.dam.name || '', b.dam.name || '');
+        });
+      $('basinMapSelectedMeta').textContent = selected
+        ? `${dams.length} baraj · Son yayımlanan aktif doluluk`
+        : 'Haritadaki bir havza alanına dokunun.';
+      if (!dams.length) {
+        const empty = document.createElement('div');
+        empty.className = 'baraj-map-empty';
+        empty.textContent = selected ? 'Bu havzada baraj verisi bulunamadı.' : 'Barajlar yükleniyor…';
+        detail.append(empty);
+        return;
+      }
+      dams.forEach(({dam, latest}) => {
+        const row = document.createElement('div'), copy = document.createElement('span');
+        const name = document.createElement('b'), dateNode = document.createElement('small'), value = document.createElement('strong');
+        name.textContent = dam.name || '—';
+        dateNode.textContent = latest?.date ? displayDate(latest.date) : 'Veri tarihi yok';
+        const fullness = Number(latest?.activeFullnessAmount);
+        value.textContent = Number.isFinite(fullness) ? `%${number.format(fullness)}` : '—';
+        copy.append(name, dateNode); row.append(copy, value); detail.append(row);
+      });
+    }
+    function renderBasinRisks(selectedName = '') {
+      const body = $('basinRiskBody'), scrollArea = body.closest('.baraj-risk-table-wrap'), previousScroll = scrollArea?.scrollTop || 0;
+      const basins = [...(basinHistoryPayload?.basins || [])];
+      body.replaceChildren();
+      const riskRank = {Yüksek: 3, Orta: 2, Düşük: 1, Hesaplanamadı: 0};
+      basins.sort((a, b) => {
+        const levelDifference = (riskRank[b.risk?.level] || 0) - (riskRank[a.risk?.level] || 0);
+        if (levelDifference) return levelDifference;
+        const first = Number(a.risk?.score), second = Number(b.risk?.score);
+        if (Number.isFinite(first) && Number.isFinite(second) && first !== second) return second - first;
+        return damCollator.compare(a.name || '', b.name || '');
+      });
+      const highCount = basins.filter(basin => basin.risk?.level === 'Yüksek').length;
+      const mediumCount = basins.filter(basin => basin.risk?.level === 'Orta').length;
+      $('basinRiskMeta').textContent = basins.length
+        ? `${basins.length} havza · ${highCount} yüksek · ${mediumCount} orta risk`
+        : 'Risk hesaplanabilecek havza bulunamadı';
+      if (!basins.length) {
+        const row = document.createElement('tr'), cell = document.createElement('td');
+        cell.colSpan = 6; cell.textContent = 'Havza riskleri için yeterli veri bulunamadı.';
+        row.append(cell); body.append(row); return;
+      }
+      basins.forEach((basin, index) => {
+        const risk = basin.risk || {}, row = document.createElement('tr');
+        row.className = basin.name === selectedName ? 'active' : '';
+        row.tabIndex = 0; row.setAttribute('role', 'button');
+        row.setAttribute('aria-label', `${basin.name}, ${risk.level || 'hesaplanamadı'} risk`);
+        const rank = document.createElement('td'); rank.textContent = String(index + 1).padStart(2, '0');
+        const name = document.createElement('td'), nameButton = document.createElement('button');
+        nameButton.type = 'button'; nameButton.textContent = basin.name || '—'; name.append(nameButton);
+        const level = document.createElement('td'), badge = document.createElement('span');
+        const riskClass = {Yüksek: 'yuksek', Orta: 'orta', Düşük: 'dusuk'}[risk.level] || 'hesaplanamadi';
+        badge.className = `baraj-risk-badge ${riskClass}`;
+        badge.textContent = risk.level || 'Hesaplanamadı'; level.append(badge);
+        const latest = document.createElement('td');
+        latest.textContent = Number.isFinite(Number(risk.latestFullness)) ? `%${number.format(risk.latestFullness)}` : '—';
+        const slopeValue = risk.dailySlope === null ? NaN : Number(risk.dailySlope), slope = document.createElement('td');
+        slope.textContent = Number.isFinite(slopeValue) ? `${slopeValue >= 0 ? '+' : '−'}%${number.format(Math.abs(slopeValue))} / gün` : 'Yetersiz veri';
+        slope.className = Number.isFinite(slopeValue) ? (slopeValue < 0 ? 'negative' : 'positive') : '';
+        const critical = document.createElement('td'), days = risk.daysToCritical === null ? NaN : Number(risk.daysToCritical);
+        critical.textContent = Number.isFinite(days)
+          ? days === 0 ? 'Kritik seviyede' : `${number.format(days)} gün · ${displayDate(risk.criticalDate)}`
+          : 'Öngörülmüyor';
+        critical.title = risk.reason || '';
+        const activate = () => { $('basinSelect').value = basin.name; renderBasinHistory(); };
+        row.addEventListener('click', activate);
+        row.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); activate(); } });
+        row.append(rank, name, level, latest, slope, critical); body.append(row);
+      });
+      if (scrollArea) scrollArea.scrollTop = previousScroll;
+    }
+    function renderBasinHistory() {
+      const selected = basinHistoryPayload?.basins?.find(item => item.name === $('basinSelect').value);
+      renderBasinRisks(selected?.name || '');
+      renderBasinMap(selected || null);
+      if (!selected) {
+        renderBasinChart([], {});
+        renderBasinDams(null);
+        return;
+      }
+      const points = selected.points || [], analysis = selected.analysis || {}, latest = points.at(-1);
+      $('basinLatest').textContent = latest ? `%${number.format(latest.average)}` : '—';
+      $('basinLatestDate').textContent = latest ? `${displayDate(latest.date)} · ${latest.damCount} baraj` : 'Veri yok';
+      const change = Number(analysis.changeFromStart);
+      $('basinChange').textContent = Number.isFinite(change) ? `${change >= 0 ? '+' : '−'}%${number.format(Math.abs(change))}` : '—';
+      $('basinChange').className = Number.isFinite(change) ? (change >= 0 ? 'positive' : 'negative') : '';
+      $('basinPeriod').textContent = points.length ? `${displayDate(points[0].date)} – ${displayDate(points.at(-1).date)}` : 'Dönem yok';
+      $('basinRegime').textContent = analysis.regime || '—';
+      const slope = Number(analysis.slopePerDay);
+      $('basinSlope').textContent = Number.isFinite(slope) ? `Günde ${slope >= 0 ? '+' : '−'}%${number.format(Math.abs(slope))} puan` : 'Eğilim hesaplanamadı';
+      if (analysis.projectedDepletionDate) {
+        $('basinDepletion').textContent = displayDate(analysis.projectedDepletionDate);
+        $('basinConfidence').textContent = `${number.format(analysis.daysRemaining)} gün · ${analysis.confidence} güven · deneysel`;
+      } else if (analysis.projectionStatus === 'Mevcut eğilim azalmıyor') {
+        $('basinDepletion').textContent = 'Öngörülmüyor';
+        $('basinConfidence').textContent = 'Mevcut eğilim azalmıyor';
+      } else {
+        $('basinDepletion').textContent = 'Hesaplanmadı';
+        $('basinConfidence').textContent = analysis.projectionStatus || 'Yeterli veri bulunamadı';
+      }
+      $('basinChartTitle').textContent = selected.name;
+      $('basinChartRange').textContent = `${points.length} yayın günü`;
+      $('basinMethodNote').textContent = basinHistoryPayload.methodNote || '';
+      renderBasinChart(points, analysis);
+      renderBasinDams(selected);
+    }
+    function renderBasinDams(selected) {
+      const body = $('basinDamTableBody'), button = $('basinXlsxButton');
+      body.replaceChildren();
+      const rows = (selected?.dams || []).flatMap(dam =>
+        (dam.points || []).map(point => ({...point, dam: dam.name || '—'}))
+      ).sort((a, b) => b.date.localeCompare(a.date) || damCollator.compare(a.dam, b.dam));
+      const damCount = selected?.dams?.length || 0;
+      $('basinDamTitle').textContent = selected ? `${selected.name} havzasındaki aktif doluluklar` : 'Seçili havzadaki aktif doluluklar';
+      $('basinDamMeta').textContent = selected ? `${damCount} baraj · ${rows.length} tarihli kayıt` : 'Havza seçimi bekleniyor';
+      button.disabled = !selected || !rows.length;
+      if (!rows.length) {
+        const row = document.createElement('tr'), cell = document.createElement('td');
+        cell.colSpan = 4;
+        cell.textContent = selected ? 'Bu havza için baraj bazında doluluk kaydı bulunamadı.' : 'Havza seçimi bekleniyor.';
+        row.append(cell); body.append(row);
+        return;
+      }
+      rows.forEach(item => {
+        const row = document.createElement('tr');
+        const fullness = Number(item.activeFullnessAmount);
+        [displayDate(item.date), item.dam, Number.isFinite(fullness) ? `%${number.format(fullness)}` : '—', item.source || '—'].forEach(value => {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.append(cell);
+        });
+        body.append(row);
+      });
+    }
+    async function loadBasinHistory() {
+      const select = $('basinSelect'), previous = select.value;
+      select.disabled = true;
+      $('basinXlsxButton').disabled = true;
+      setBarajConnectionPart('basin', 'loading', 'Havza geçmişi alınıyor');
+      try {
+        const response = await fetch('/api/basin-history', {credentials: 'same-origin'});
+        const payload = await response.json();
+        if (!response.ok) {
+          if (response.status === 401) { showLogin(); return; }
+          throw new Error(payload.error || 'Havza geçmişi alınamadı.');
+        }
+        basinHistoryPayload = payload;
+        $('basinToolbarPeriod').textContent = payload.startDate
+          ? `${displayDate(payload.startDate)} tarihinden bugüne doluluk geçmişi`
+          : 'Havza doluluk geçmişi';
+        select.replaceChildren();
+        (payload.basins || []).forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.name;
+          option.textContent = item.name;
+          select.append(option);
+        });
+        if (!payload.basins?.length) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = 'Havza verisi bulunamadı';
+          select.append(option);
+        }
+        select.value = (payload.basins || []).some(item => item.name === previous) ? previous : (payload.basins?.[0]?.name || '');
+        select.disabled = !payload.basins?.length;
+        renderBasinHistory();
+        populateComparison(true);
+        setBarajConnectionPart('basin', payload.basins?.length ? 'live' : 'warning', payload.basins?.length ? 'Havza geçmişi doğrulandı' : 'Havza geçmişi bulunamadı');
+      } catch (error) {
+        basinHistoryPayload = null;
+        renderBasinMap(null);
+        populateComparison(false);
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Havzalar alınamadı';
+        select.replaceChildren(option);
+        select.disabled = true;
+        renderBasinDams(null);
+        $('basinToolbarPeriod').textContent = 'Havza geçmişi şu anda kullanılamıyor';
+        $('basinRegimeChart').innerHTML = `<div class="baraj-chart-empty">${error.message || 'Havza geçmişi alınamadı.'}</div>`;
+        setBarajConnectionPart('basin', 'warning', error.message || 'Havza geçmişi alınamadı');
+      }
+    }
+    function render(items) {
+      const body = $('tableBody');
+      body.replaceChildren();
+      if (!items.length) {
+        body.innerHTML = '<tr><td colspan="4" class="text-center text-secondary py-5">Kayıt bulunamadı.</td></tr>';
+        return;
+      }
+      sortedItems(items).forEach(x => {
+        const row = document.createElement('tr');
+        const fullness = fullnessValue(x);
+        [x.dam, x.basin, fullness === null ? '-' : `%${number.format(fullness)}`, x.date ? new Date(x.date).toLocaleDateString('tr-TR') : '-'].forEach(value => {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.append(cell);
+        });
+        body.append(row);
+      });
+    }
+    async function load() {
+      const button = $('refreshButton');
+      button.disabled = true;
+      $('barajDateSelect').disabled = true;
+      $('barajXlsxButton').disabled = true;
+      $('status').textContent = 'Yükleniyor...';
+      setBarajConnectionPart('primary', 'loading', 'Baraj listesi alınıyor');
+      try {
+        const selectedDate = $('barajDateSelect').value;
+        const endpoint = selectedDate ? `/api/active-fullness?date=${encodeURIComponent(selectedDate)}` : '/api/active-fullness';
+        const response = await fetch(endpoint, {credentials: 'same-origin'});
+        const payload = await response.json();
+        if (!response.ok) {
+          if (response.status === 401) {
+            showLogin();
+            const loginError = $('loginError');
+            loginError.textContent = payload.error || 'EPİAŞ oturumu doğrulanamadı.';
+            loginError.classList.remove('d-none');
+            return;
+          }
+          throw new Error(payload.error || 'Veriler alınamadı.');
+        }
+        $('alert').className = 'alert d-none';
+        currentItems = Array.isArray(payload.items) ? payload.items : [];
+        updateDateOptions(payload);
+        render(currentItems);
+        summary(currentItems);
+        window.BahaTracking?.publish({
+          module: 'baraj',
+          date: payload.selectedDate,
+          items: currentItems.map(item => ({
+            name: item.dam,
+            basin: item.basin,
+            fullness: fullnessValue(item)
+          }))
+        });
+        updateListStatus();
+        const footerUpdated = $('barajFooterUpdated');
+        if (footerUpdated) {
+          footerUpdated.textContent = new Date().toLocaleString('tr-TR', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+        $('barajXlsxButton').disabled = currentItems.length === 0;
+        setBarajConnectionPart('primary', currentItems.length ? 'live' : 'warning', currentItems.length ? 'Baraj listesi doğrulandı' : 'Seçilen tarih için baraj verisi yok');
+      } catch (e) {
+        const message = e.message || 'Veriler alınamadı.';
+        clearBarajOverview(message);
+        setBarajConnectionPart('primary', 'error', message);
+        alert(message, 'warning');
+      } finally {
+        button.disabled = false;
+        $('barajDateSelect').disabled = false;
+      }
+    }
+    $('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const button = $('loginButton'), error = $('loginError'), username = $('username').value.trim(), password = $('password').value;
+      error.classList.add('d-none');
+      if (!username || !password) { error.textContent = 'E-posta ve şifreyi eksiksiz girin.'; error.classList.remove('d-none'); return; }
+      const controller = typeof AbortController === 'function' ? new AbortController() : null;
+      const timeout = setTimeout(() => controller?.abort(), 25000);
+      button.disabled = true; button.setAttribute('aria-busy', 'true'); button.innerHTML = 'Giriş yapılıyor…';
+      try {
+        const response = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password}), credentials:'same-origin', ...(controller ? {signal:controller.signal} : {})});
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Giriş yapılamadı.');
+        $('password').value = ''; showDashboard();
+      } catch (e) {
+        error.textContent = e.name === 'AbortError' ? 'EPİAŞ bağlantısı zaman aşımına uğradı. Lütfen tekrar deneyin.' : (e.message || 'Giriş yapılamadı.');
+        error.classList.remove('d-none');
+      } finally {
+        clearTimeout(timeout); button.disabled = false; button.removeAttribute('aria-busy'); button.innerHTML = 'Panele giriş yap <span aria-hidden="true">→</span>';
+      }
+    });
+    $('togglePassword').addEventListener('click', () => { const input=$('password'), visible=input.type==='text'; input.type=visible?'password':'text'; $('togglePassword').setAttribute('aria-label',visible?'Şifreyi göster':'Şifreyi gizle'); $('togglePassword').setAttribute('aria-pressed',String(!visible)); });
+    let deferredInstallPrompt = null;
+    const installButton = $('installButton');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (!isStandalone) installButton.hidden = false;
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      installButton.hidden = false;
+    });
+    installButton.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return;
+      }
+      const message = /iphone|ipad|ipod/i.test(navigator.userAgent)
+        ? 'Safari paylaş menüsünden “Ana Ekrana Ekle” seçeneğine dokunun.'
+        : 'Tarayıcı menüsünden “Uygulamayı yükle” veya “Ana ekrana ekle” seçeneğini kullanın.';
+      window.alert(message);
+    });
+    window.addEventListener('appinstalled', () => { installButton.hidden = true; deferredInstallPrompt = null; });
+    $('logoutButton').addEventListener('click', async () => { await fetch('/api/logout',{method:'POST', credentials:'same-origin'}); window.location.replace('/oturum-kapatildi'); });
+    async function restoreSession() { try { const response=await fetch('/api/session',{credentials:'same-origin'}), payload=await response.json(); if(response.ok && payload.authenticated) showDashboard(); else showLogin(); } catch { showLogin(); } }
+    $('sortSelect').addEventListener('change', () => { render(currentItems); updateListStatus(); });
+    $('basinSelect').addEventListener('change', renderBasinHistory);
+    $('basinMapPanelToggle').addEventListener('click', () => setBasinMapPanel(!$('basinMapPanelToggle').getAttribute('aria-expanded').includes('true')));
+    document.querySelectorAll('[data-compare-mode]').forEach(button => button.addEventListener('click', () => setComparisonMode(button.dataset.compareMode)));
+    $('compareFirst').addEventListener('change', renderComparison);
+    $('compareSecond').addEventListener('change', renderComparison);
+    $('compareSwap').addEventListener('click', () => {
+      const first = $('compareFirst').value;
+      $('compareFirst').value = $('compareSecond').value;
+      $('compareSecond').value = first;
+      renderComparison();
+    });
+    $('basinXlsxButton').addEventListener('click', () => {
+      const basin = $('basinSelect').value;
+      if (!basin || $('basinXlsxButton').disabled) return;
+      window.location.href = `/api/basin-export.xlsx?basin=${encodeURIComponent(basin)}`;
+    });
+    $('barajDateSelect').addEventListener('change', load);
+    $('barajXlsxButton').addEventListener('click', () => {
+      if (!currentItems.length) return;
+      const params = new URLSearchParams({sort: $('sortSelect').value, date: $('barajDateSelect').value});
+      window.location.href = `/api/export.xlsx?${params.toString()}`;
+    });
+    $('refreshButton').addEventListener('click', () => { load(); loadBasinHistory(); }); restoreSession();
+  </script>
+</body>
+</html>

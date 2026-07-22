@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Baha Üretim UEVM ve UEÇM verilerini sade, güvenilir ve kaynak bazlı sunan analiz paneli."
+    />
+    <title>Baha Üretim Paneli</title>
+    <link rel="icon" href="/suite-assets/icon-192.png" type="image/png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/suite-assets/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/reference-theme.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">İçeriğe geç</a>
+
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Baha Üretim ana sayfa">
+        <span class="brand-mark" aria-hidden="true">
+          <img src="/suite-assets/baha-logo.png" alt="" />
+        </span>
+        <span>
+          <strong>BAHA ÜRETİM</strong>
+          <small>UEVM &amp; UEÇM ANALİZ</small>
+        </span>
+      </a>
+
+      <div class="topbar-meta">
+        <span class="timezone">TRT · UTC+3</span>
+        <span class="connection" id="connectionStatus">
+          <i aria-hidden="true"></i>
+          <span>Bağlanıyor</span>
+        </span>
+        <button class="logout-button" id="logoutButton" type="button">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M8 4H4v12h4M12 6l4 4-4 4M7 10h9"></path>
+          </svg>
+          <span>Çıkış</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <div class="eyebrow">
+              <span>BAHA ÜRETİM ANALİZ PANELİ</span>
+              <span class="eyebrow-line" aria-hidden="true"></span>
+              <span>UEVM / UEÇM</span>
+            </div>
+            <h1>Üretim verileri,<br /><em>tek ekranda.</em></h1>
+            <p class="hero-copy">
+              EPİAŞ Şeffaflık Platformu UEVM ve UEÇM verilerini kaynak, grup ve
+              saat bazında sade, hızlı ve güvenilir bir panelde takip edin.
+            </p>
+          </div>
+          <div class="hero-stamp" aria-hidden="true">
+            <span>VERİ</span>
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="49"></circle>
+              <path d="M37 70 52 54l12 11 21-25"></path>
+              <path d="m77 40 8 .2-.2 8"></path>
+            </svg>
+            <span>01</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="control-shell" aria-label="Tarih filtreleri">
+        <form class="date-form" id="dateForm">
+          <label>
+            <span>Başlangıç</span>
+            <input id="startDate" name="start" type="date" required />
+          </label>
+          <span class="date-arrow" aria-hidden="true">→</span>
+          <label>
+            <span>Bitiş</span>
+            <input id="endDate" name="end" type="date" required />
+          </label>
+          <button class="apply-button" type="submit">
+            <span>Veriyi getir</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M3 10h13M11 5l5 5-5 5"></path>
+            </svg>
+          </button>
+        </form>
+      </section>
+
+      <div class="data-alert hidden" id="dataAlert" role="status" aria-live="polite">
+        <span class="data-alert-icon" aria-hidden="true">!</span>
+        <p id="dataAlertText"></p>
+        <button class="data-alert-close" id="dataAlertClose" type="button" aria-label="Uyarıyı kapat">×</button>
+      </div>
+
+      <section class="section-block overview-section" aria-labelledby="overviewTitle">
+        <div class="section-heading">
+          <div>
+            <span class="section-index">01 / ÖZET</span>
+            <h2 id="overviewTitle">Sistemin nabzı</h2>
+          </div>
+          <div class="period-label" id="periodLabel">—</div>
+        </div>
+
+        <div class="kpi-grid" id="kpiGrid" aria-live="polite">
+          <article class="kpi-card skeleton-card"></article>
+          <article class="kpi-card skeleton-card"></article>
+          <article class="kpi-card skeleton-card"></article>
+          <article class="kpi-card skeleton-card"></article>
+          <article class="kpi-card skeleton-card"></article>
+        </div>
+      </section>
+
+      <section class="chart-grid section-block" aria-labelledby="trendTitle">
+        <article class="panel trend-panel">
+          <div class="panel-head">
+            <div>
+              <span class="section-index">02 / ZAMAN SERİSİ</span>
+              <h2 id="trendTitle">UEVM ↔ UEÇM dengesi</h2>
+            </div>
+            <span class="series-hint">Çizgileri açıp kapatın</span>
+          </div>
+          <div
+            class="series-controls"
+            id="trendSeriesControls"
+            role="group"
+            aria-label="Grafikte gösterilecek seriler"
+          >
+            <button class="series-toggle active" type="button" data-series="uevm" aria-pressed="true">
+              <i style="--series-color: #2d70ee"></i>UEVM
+            </button>
+            <button class="series-toggle active" type="button" data-series="uecm" aria-pressed="true">
+              <i style="--series-color: #ff6847"></i>UEÇM
+            </button>
+            <button class="series-toggle" type="button" data-series="sun" aria-pressed="false">
+              <i style="--series-color: #e0a323"></i>Güneş
+            </button>
+            <button class="series-toggle" type="button" data-series="wind" aria-pressed="false">
+              <i style="--series-color: #6c8dfa"></i>Rüzgâr
+            </button>
+            <button class="series-toggle" type="button" data-series="hydro" aria-pressed="false">
+              <i style="--series-color: #0e9690"></i>Hidroelektrik
+            </button>
+            <button class="series-toggle" type="button" data-series="thermal" aria-pressed="false">
+              <i style="--series-color: #596a83"></i>Termik
+            </button>
+            <button class="series-toggle" type="button" data-series="naturalGas" aria-pressed="false">
+              <i style="--series-color: #41b8b2"></i>Doğal gaz
+            </button>
+          </div>
+          <div class="chart-wrap" id="trendChart">
+            <div class="chart-loading">Veri hazırlanıyor…</div>
+          </div>
+          <div class="chart-foot">
+            <span>SAATLİK · MWh</span>
+            <span id="coverageLabel">—</span>
+          </div>
+        </article>
+
+        <article class="panel balance-panel">
+          <div class="panel-head">
+            <div>
+              <span class="section-index">03 / DENGE</span>
+              <h2>Net sistem farkı</h2>
+            </div>
+            <button
+              class="info-button"
+              id="methodButton"
+              type="button"
+              aria-label="Hesaplama metodolojisi"
+              title="Hesaplama metodolojisi"
+            >
+              i
+            </button>
+          </div>
+          <div class="balance-visual" id="balanceVisual">
+            <span class="balance-label">UEVM − UEÇM</span>
+            <strong>—</strong>
+            <small>MWh</small>
+          </div>
+          <div class="balance-scale" aria-hidden="true">
+            <span>Çekiş fazla</span>
+            <i><b id="balanceMarker"></b></i>
+            <span>Veriş fazla</span>
+          </div>
+          <p class="balance-copy">
+            Pozitif değer sisteme verilen enerjinin, çekilen enerjiden yüksek
+            olduğunu gösterir.
+          </p>
+        </article>
+      </section>
+
+      <section class="section-block" aria-labelledby="sourcesTitle">
+        <div class="section-heading source-heading">
+          <div>
+            <span class="section-index">04 / KAYNAK KIRILIMI</span>
+            <h2 id="sourcesTitle">Üretim karması</h2>
+          </div>
+          <p>UEVM · seçili dönem toplamı</p>
+        </div>
+        <div class="source-card-grid" id="sourceCards"></div>
+      </section>
+
+      <section class="section-block split-grid" aria-labelledby="groupsTitle">
+        <article class="panel groups-panel">
+          <div class="panel-head">
+            <div>
+              <span class="section-index">05 / ANA GRUPLAR</span>
+              <h2 id="groupsTitle">Üç net grup</h2>
+            </div>
+          </div>
+          <div id="groupBars" class="group-bars"></div>
+          <div class="semantic-note">
+            <span>UEÇM neden yok?</span>
+            EPİAŞ, UEÇM’yi üretim kaynağına göre ayırmaz. Kaynak bazlı karşılaştırma
+            yapmak yanlış bir dağıtım üretirdi.
+          </div>
+        </article>
+
+        <article class="panel mix-panel">
+          <div class="panel-head">
+            <div>
+              <span class="section-index">06 / DAĞILIM</span>
+              <h2>Grup payları</h2>
+            </div>
+          </div>
+          <div class="donut-layout">
+            <div class="donut" id="mixDonut">
+              <div>
+                <strong>—</strong>
+                <span>MWh</span>
+              </div>
+            </div>
+            <div class="donut-legend" id="mixLegend"></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="section-block details-section" aria-labelledby="detailsTitle">
+        <div class="section-heading details-heading">
+          <div>
+            <span class="section-index">07 / DETAY</span>
+            <h2 id="detailsTitle">Kaynak tablosu</h2>
+          </div>
+          <button class="export-button" id="exportButton" type="button">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M10 2v10m0 0 4-4m-4 4L6 8M3 15v2h14v-2"></path>
+            </svg>
+            <span>XLSX indir</span>
+          </button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Grup</th>
+                <th>Kaynak</th>
+                <th class="numeric">UEVM</th>
+                <th class="numeric">Pay</th>
+              </tr>
+            </thead>
+            <tbody id="sourceTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section-block report-section" aria-labelledby="reportTitle">
+        <div class="section-heading report-heading">
+          <div>
+            <span class="section-index">08 / HIZLI RAPORLAR</span>
+            <h2 id="reportTitle">Otomatik XLSX raporu</h2>
+          </div>
+          <p>Son yayımlanan EPİAŞ verisine göre dönem otomatik seçilir.</p>
+        </div>
+        <div class="report-grid">
+          <article class="report-card">
+            <div>
+              <span class="report-index">01 / GÜNLÜK</span>
+              <h3>Son gün raporu</h3>
+              <p>Son yayımlanmış güne ait özet, kaynak kırılımı ve saatlik veriler.</p>
+            </div>
+            <div class="report-card-foot">
+              <span id="dailyReportPeriod">Veri bekleniyor</span>
+              <button class="report-button" id="dailyReportButton" type="button" disabled>
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M10 2v10m0 0 4-4m-4 4L6 8M3 15v2h14v-2"></path>
+                </svg>
+                <span>Günlük XLSX</span>
+              </button>
+            </div>
+          </article>
+          <article class="report-card">
+            <div>
+              <span class="report-index">02 / AYLIK</span>
+              <h3>Güncel ay raporu</h3>
+              <p>Son veri bulunan ayın ilk gününden yayımlanmış son güne kadar tüm kayıtlar.</p>
+            </div>
+            <div class="report-card-foot">
+              <span id="monthlyReportPeriod">Veri bekleniyor</span>
+              <button class="report-button" id="monthlyReportButton" type="button" disabled>
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M10 2v10m0 0 4-4m-4 4L6 8M3 15v2h14v-2"></path>
+                </svg>
+                <span>Aylık XLSX</span>
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="suite-footer" data-suite-footer="uretim">
+      <div class="footer-brand suite-footer-brand">
+        BAHA<br />ENERJ&#304;<span>↗</span>
+      </div>
+      <div>
+        <strong>Veri kaynağı</strong>
+        <a
+          href="https://seffaflik.epias.com.tr/"
+          target="_blank"
+          rel="noreferrer noopener"
+          >EPİAŞ Şeffaflık Platformu</a
+        >
+      </div>
+      <div>
+        <strong>Son güncelleme</strong>
+        <span id="updatedAt">—</span>
+      </div>
+      <p>Veriyi sadeleştirir.<br />Anlamını değiştirmez.</p>
+    </footer>
+
+    <div class="tooltip" id="chartTooltip" role="status"></div>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
