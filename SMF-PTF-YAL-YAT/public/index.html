@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101c35">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Baha Enerji">
+  <title>Baha Piyasa Paneli</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png?v=1">
+  <link rel="shortcut icon" type="image/png" href="/assets/icon-192.png?v=1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" rel="stylesheet">
+  <link href="/styles.css?v=22" rel="stylesheet">
+  <script src="/config.js"></script>
+</head>
+<body>
+  <div id="pull-refresh" class="pull-refresh" aria-hidden="true"><span>↻</span><small>Yenilemek için çekin</small></div>
+  <div id="login-view" class="login-shell">
+    <section class="login-story">
+      <div class="login-brand-logo"><img src="/assets/baha-logo.png" alt="Baha Enerji"></div>
+      <div class="story-copy">
+        <span class="eyebrow">BAHA ENERJİ PİYASA PANELİ</span>
+        <h1>Piyasanın nabzı,<br><em>tek ekranda.</em></h1>
+        <p>SMF, PTF, YAL ve YAT değerlerini saatlik izleyin. Geçmiş bir günü saniyeler içinde yeniden çağırın.</p>
+      </div>
+      <div class="story-metrics"><span>24<small>saatlik görünüm</small></span><span>4<small>kritik gösterge</small></span></div>
+    </section>
+    <main class="login-form-wrap">
+      <form id="login-form" class="login-card">
+        <div class="mobile-brand"><span class="mobile-brand-logo"><img src="/assets/baha-logo.png" alt="Baha Enerji"></span> Baha Enerji</div>
+        <span class="eyebrow text-primary">GÜVENLİ ERİŞİM</span>
+        <h2 id="auth-title">Tekrar hoş geldiniz</h2><p id="auth-description" class="text-secondary">EPİAŞ Şeffaflık Platformu hesabınızla devam edin.</p>
+        <div id="login-alert" class="alert alert-danger d-none"></div>
+        <label id="email-label" class="form-label mt-4">EPİAŞ e-posta adresi</label>
+        <div class="input-icon"><span class="input-icon-addon">@</span><input id="email" type="email" class="form-control form-control-lg" placeholder="ornek@firma.com" autocomplete="username" required></div>
+        <label class="form-label mt-3">Şifre</label>
+        <div class="password-field"><span class="password-leading">●</span><input id="password" type="password" class="form-control form-control-lg" placeholder="Şifreniz" autocomplete="current-password" required><button id="password-toggle" class="password-toggle" type="button" aria-label="Şifreyi göster" aria-pressed="false"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-closed d-none" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 6.2A10 10 0 0 1 12 6c6.5 0 10 6 10 6a16 16 0 0 1-2.1 2.8M6.2 6.2C3.5 8 2 12 2 12s3.5 6 10 6a10 10 0 0 0 3.3-.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg></button></div>
+        <button id="login-button" class="btn btn-primary btn-lg w-100 mt-4" type="submit"><span id="auth-button-text">Panele giriş yap</span> <span>→</span></button>
+        <div class="security-note">🔒 EPİAŞ şifreniz diskte veya tarayıcıda saklanmaz.</div>
+        <button id="install-app" class="btn btn-outline-primary w-100 mt-3 d-none" type="button">Uygulamayı telefona yükle</button>
+        <div id="ios-install-hint" class="install-hint d-none">iPhone'da Safari'nin Paylaş menüsünden <b>Ana Ekrana Ekle</b> seçeneğini kullanın.</div>
+      </form>
+    </main>
+  </div>
+
+  <div id="app-view" class="d-none app-shell">
+    <aside class="sidebar">
+      <button id="menu-close" class="menu-close" type="button" aria-label="Menüyü kapat">×</button>
+      <div class="side-brand"><span class="side-logo"><img src="/assets/baha-logo.png" alt="Baha Enerji"></span><div>Baha Enerji</div></div>
+      <nav><a class="active" href="#top">⌁ <span>Genel Bakış</span></a><a href="#history">◷ <span>Geçmiş Veriler</span></a><a href="#next-day-ptf">→ <span>Ertesi Gün PTF</span></a><a href="#hourly-data">⌁ <span>Saatlik Veri</span></a><a href="#detailed-data">≡ <span>Detaylı Veri</span></a></nav>
+      <div class="side-bottom"><div id="connection-status" class="live-dot"><i></i><span>EPİAŞ · EPİAŞ canlı</span></div><button id="logout" class="btn btn-ghost-light w-100">Oturumu kapat</button></div>
+    </aside>
+    <button id="sidebar-overlay" class="sidebar-overlay" type="button" aria-label="Menüyü kapat"></button>
+    <main class="main-content" id="top">
+      <header class="topbar"><button id="menu-button" class="menu-button" type="button" aria-label="Menüyü aç" aria-expanded="false">&#9776;</button><div class="topbar-title"><span class="breadcrumb">PANEL / GENEL BAKIŞ</span><h1>Günlük Piyasa Özeti</h1></div><div class="piyasa-header-actions"><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Koyu temaya geç">☾</button><div class="user-pill"><span id="user-initial">B</span><div><b id="user-email">Baha Enerji Kullanıcısı</b></div></div></div></header>
+      <section class="date-toolbar" id="history"><div><label>GÖRÜNTÜLENEN TARİH</label><div class="date-nav"><button id="prev-date">‹</button><input id="date-input" type="date"><button id="next-date">›</button></div></div><div class="compare-control"><label>KARŞILAŞTIR</label><div class="compare-fields"><select id="compare-select" class="form-select"><option value="none">Karşılaştırma yok</option><option value="day" selected>Önceki gün</option><option value="week">7 gün önceki aynı gün</option><option value="year-weekday">Önceki yıl · aynı hafta ve gün</option><option value="custom">İstediğim tarih</option></select><input id="compare-date-input" type="date" class="form-control d-none" aria-label="Karşılaştırma tarihi"></div></div><div class="currency-control"><label>PTF BİRİMİ</label><div class="currency-switch" role="group" aria-label="PTF fiyat birimi"><button class="active" type="button" data-currency="TRY" aria-pressed="true">TL</button><button type="button" data-currency="EUR" aria-pressed="false">EUR</button><button type="button" data-currency="USD" aria-pressed="false">USD</button></div></div><button id="today-button" class="btn btn-outline-secondary">Bugün</button><button id="refresh-button" class="btn btn-primary">↻ Verileri güncelle</button><span id="last-update" class="last-update"></span></section>
+      <div id="data-alert" class="alert alert-danger d-none"></div>
+      <section class="metric-grid">
+        <article class="metric-card blue"><div class="metric-head"><span>PTF ORTALAMA</span><i id="ptf-currency-icon">₺</i></div><strong id="ptf-avg">—</strong><small id="ptf-unit">TL/MWh</small><div class="metric-foot"><span id="ptf-range">Min — · Maks —</span><span id="ptf-delta" class="metric-delta"></span></div></article>
+        <article class="metric-card violet"><div class="metric-head"><span>SMF ORTALAMA</span><i id="smf-currency-icon">₺</i></div><strong id="smf-avg">—</strong><small id="smf-unit">TL/MWh</small><div class="metric-foot"><span id="smf-range">Min — · Maks —</span><span id="smf-delta" class="metric-delta"></span></div></article>
+        <article class="metric-card green"><div class="metric-head"><span>TOPLAM YAL</span><i>↗</i></div><strong id="yal-total">—</strong><small>MWh</small><div class="metric-foot"><span>EPİAŞ resmî toplamı</span><span id="yal-delta" class="metric-delta"></span></div></article>
+        <article class="metric-card orange"><div class="metric-head"><span>TOPLAM YAT</span><i>↘</i></div><strong id="yat-total">—</strong><small>MWh</small><div class="metric-foot"><span>EPİAŞ resmî toplamı</span><span id="yat-delta" class="metric-delta"></span></div></article>
+      </section>
+      <section class="market-insight" id="market-insight"><div class="insight-icon">✦</div><div><span class="eyebrow">OTOMATİK PİYASA ÖZETİ</span><p id="insight-text">Veriler analiz ediliyor…</p></div></section>
+      <section class="panel next-day-ptf-panel anchor-section" id="next-day-ptf"><div class="panel-heading"><div><span class="eyebrow">GÜN ÖNCESİ PİYASASI</span><h3>Ertesi Gün PTF</h3></div><div class="next-day-ptf-heading"><strong id="next-day-ptf-date">—</strong><span id="next-day-ptf-status" class="loading"><i></i> Yükleniyor</span></div></div><div class="next-day-ptf-body"><div class="next-day-ptf-summary"><article><span>ORTALAMA</span><strong id="next-day-ptf-average">—</strong><small id="next-day-ptf-unit">TL/MWh</small></article><article><span>EN DÜŞÜK</span><strong id="next-day-ptf-min">—</strong><small id="next-day-ptf-min-hour">—</small></article><article><span>EN YÜKSEK</span><strong id="next-day-ptf-max">—</strong><small id="next-day-ptf-max-hour">—</small></article><article><span>YAYIMLANAN</span><strong id="next-day-ptf-hours">—</strong><small>saat</small></article></div><div id="next-day-ptf-chart"><div class="next-day-ptf-empty">Ertesi gün PTF verisi kontrol ediliyor…</div></div></div><div class="next-day-ptf-schedule" role="note"><span class="next-day-ptf-schedule-icon" aria-hidden="true">i</span><div><strong>PTF YAYIN TAKVİMİ</strong><p>Normal yayın akışında kesinleşmemiş PTF saat 13.00’te, kesinleşmiş PTF ise saat 14.00’te yayımlanır.</p><small>EPİAŞ teknik süreçleri veya arıza prosedürleri nedeniyle yayın saatlerinde gecikme olabilir.</small></div></div><p class="next-day-ptf-note">Değerler EPİAŞ PTF servisinden doğrudan alınır. Henüz yayımlanmamış saatler hesaplanmaz.</p></section>
+      <section class="panel chart-panel anchor-section" id="hourly-data"><div class="panel-heading"><div><span class="eyebrow">SAATLİK DEĞİŞİM</span><h3 id="price-chart-title">PTF & SMF Fiyat Eğrisi</h3></div><div class="chart-key"><span class="ptf">PTF</span><span id="smf-chart-key" class="smf">SMF</span></div></div><div id="price-chart"></div></section>
+      <section class="analysis-grid"><article class="panel"><div class="panel-heading"><div><span class="eyebrow">DENGELEME PİYASASI</span><h3>Saatlik YAL & YAT</h3></div></div><div id="quantity-chart"></div></article><article class="panel"><div class="panel-heading"><div><span class="eyebrow">SİSTEM DURUMU</span><h3>Sistem Yönü Zaman Şeridi</h3></div></div><div id="direction-chart"></div></article></section>
+      <section class="panel table-panel anchor-section" id="detailed-data"><div class="panel-heading"><div><span class="eyebrow">DETAYLI VERİ</span><h3>Saatlik Piyasa Değerleri</h3></div><button id="xlsx-button" class="btn btn-outline-secondary">↓ XLSX İNDİR</button></div><div class="table-responsive"><table class="table table-vcenter"><thead><tr><th>Saat</th><th>PTF <small id="table-ptf-unit">TL/MWh</small></th><th>SMF <small id="table-smf-unit">TL/MWh</small></th><th>YAL <small>MWh</small></th><th>YAT <small>MWh</small></th><th>YAL - YAT <small>MWh</small></th><th>Sistem Yönü</th></tr></thead><tbody id="data-body"></tbody></table></div></section>
+      <footer><span id="currency-note">PTF ve SMF, TL/MWh olarak gösteriliyor.</span> Veriler EPİAŞ Şeffaflık Platformu servislerinden sağlanır. YAL/YAT verileri yaklaşık 4 saat gecikmeli olabilir.</footer>
+    </main>
+  </div>
+  <div id="hour-detail-backdrop" class="hour-detail-backdrop"></div>
+  <section id="hour-detail" class="hour-detail" role="dialog" aria-modal="true" aria-labelledby="hour-detail-title">
+    <div class="sheet-handle"></div><button id="hour-detail-close" class="sheet-close" type="button" aria-label="Detayı kapat">×</button>
+    <span class="eyebrow">SAATLİK DETAY</span><h3 id="hour-detail-title">—</h3>
+    <div class="hour-detail-grid"><div><small>PTF</small><strong id="detail-ptf">—</strong><span id="detail-ptf-unit">TL/MWh</span></div><div><small>SMF</small><strong id="detail-smf">—</strong><span id="detail-smf-unit">TL/MWh</span></div><div><small>YAL</small><strong id="detail-yal">—</strong><span>MWh</span></div><div><small>YAT</small><strong id="detail-yat">—</strong><span>MWh</span></div></div>
+    <div id="detail-direction" class="detail-direction">—</div>
+  </section>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.5.0/dist/apexcharts.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="/app.js?v=33"></script>
+</body></html>
