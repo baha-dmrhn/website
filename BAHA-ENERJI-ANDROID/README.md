@@ -19,8 +19,8 @@ GitHub üzerinden:
 1. Bu klasörü GitHub'a gönder.
 2. GitHub repo sayfasında **Actions** bölümüne gir.
 3. **Build Baha Enerji Android APK** workflow'unu aç.
-4. Çalışma bittikten sonra **baha-enerji-debug-apk** artifact'ini indir.
-5. İçindeki `app-debug.apk` dosyasını Android telefona gönderip kur.
+4. Çalışma bittikten sonra **Baha-Enerji-APK** artifact'ini indir.
+5. ZIP içindeki `Baha-Enerji.apk` dosyasını Android telefona gönderip kur.
 
 Android Studio ile:
 
