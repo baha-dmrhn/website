@@ -18,6 +18,8 @@ jobs:
   build-apk:
     name: Build debug APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       BAHA_SITE_URL: ${{ github.event.inputs.site_url || 'https://baha-website.onrender.com' }}
 
@@ -36,16 +38,23 @@ jobs:
 
       - name: Install Android packages
         run: |
+          yes | sdkmanager --licenses
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
         working-directory: BAHA-ENERJI-ANDROID
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug -PBAHA_SITE_URL="$BAHA_SITE_URL"
+          ./gradlew --version
+          ./gradlew clean assembleDebug -PBAHA_SITE_URL="$BAHA_SITE_URL" --stacktrace
+
+      - name: Show APK output
+        run: |
+          find BAHA-ENERJI-ANDROID/app/build/outputs/apk -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: baha-enerji-debug-apk
-          path: BAHA-ENERJI-ANDROID/app/build/outputs/apk/debug/app-debug.apk
+          path: BAHA-ENERJI-ANDROID/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
