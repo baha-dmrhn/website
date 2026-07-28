@@ -1,6 +1,0 @@
-<resources>
-    <string name="app_name">Baha Enerji</string>
-    <string name="offline_title">Bağlantı kurulamadı</string>
-    <string name="offline_message">İnternet bağlantınızı veya Baha Enerji yayın adresini kontrol edin.</string>
-    <string name="retry">Tekrar dene</string>
-</resources>
