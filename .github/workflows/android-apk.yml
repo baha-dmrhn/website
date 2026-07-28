@@ -48,13 +48,18 @@ jobs:
           ./gradlew --version
           ./gradlew clean assembleDebug -PBAHA_SITE_URL="$BAHA_SITE_URL" --stacktrace
 
+      - name: Prepare installable APK
+        run: |
+          mkdir -p apk-output
+          cp BAHA-ENERJI-ANDROID/app/build/outputs/apk/debug/app-debug.apk apk-output/Baha-Enerji.apk
+
       - name: Show APK output
         run: |
-          find BAHA-ENERJI-ANDROID/app/build/outputs/apk -type f -name "*.apk" -print
+          find apk-output -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: baha-enerji-debug-apk
-          path: BAHA-ENERJI-ANDROID/app/build/outputs/apk/**/*.apk
+          name: Baha-Enerji-APK
+          path: apk-output/Baha-Enerji.apk
           if-no-files-found: error
