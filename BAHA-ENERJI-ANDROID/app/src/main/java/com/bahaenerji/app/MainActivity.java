@@ -22,11 +22,13 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -40,6 +42,7 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private ProgressBar progressBar;
+    private LinearLayout splashView;
     private LinearLayout errorView;
     private ValueCallback<Uri[]> filePathCallback;
     private String appHost;
@@ -80,7 +83,15 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                String title = view.getTitle();
+                if (title == null || !title.toLowerCase().contains("baha")) {
+                    progressBar.setVisibility(View.VISIBLE);
+                    splashView.setVisibility(View.VISIBLE);
+                    webView.setVisibility(View.INVISIBLE);
+                    return;
+                }
                 progressBar.setVisibility(View.GONE);
+                splashView.setVisibility(View.GONE);
                 errorView.setVisibility(View.GONE);
                 webView.setVisibility(View.VISIBLE);
                 CookieManager.getInstance().flush();
@@ -89,6 +100,15 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) showError();
+            }
+
+            @Override
+            public void onReceivedHttpError(
+                    WebView view,
+                    WebResourceRequest request,
+                    WebResourceResponse errorResponse
+            ) {
+                if (request.isForMainFrame() && errorResponse.getStatusCode() >= 400) showError();
             }
         });
 
@@ -155,6 +175,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        webView.setVisibility(View.INVISIBLE);
         root.addView(webView);
 
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -201,6 +222,42 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
+        splashView = new LinearLayout(this);
+        splashView.setOrientation(LinearLayout.VERTICAL);
+        splashView.setGravity(Gravity.CENTER);
+        splashView.setPadding(dp(28), dp(28), dp(28), dp(28));
+        splashView.setBackgroundColor(Color.rgb(11, 25, 48));
+
+        ImageView splashLogo = new ImageView(this);
+        splashLogo.setImageResource(com.bahaenerji.app.R.drawable.baha_logo);
+        splashLogo.setAdjustViewBounds(true);
+        splashLogo.setPadding(dp(10), dp(10), dp(10), dp(10));
+        splashLogo.setBackgroundColor(Color.WHITE);
+        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(92), dp(92));
+        logoParams.bottomMargin = dp(22);
+
+        TextView splashTitle = new TextView(this);
+        splashTitle.setText("Baha Enerji");
+        splashTitle.setTextColor(Color.WHITE);
+        splashTitle.setTextSize(28);
+        splashTitle.setGravity(Gravity.CENTER);
+        splashTitle.setTypeface(null, 1);
+
+        TextView splashMessage = new TextView(this);
+        splashMessage.setText("Panel hazırlanıyor...");
+        splashMessage.setTextColor(Color.rgb(171, 190, 220));
+        splashMessage.setTextSize(15);
+        splashMessage.setGravity(Gravity.CENTER);
+        splashMessage.setPadding(0, dp(8), 0, 0);
+
+        splashView.addView(splashLogo, logoParams);
+        splashView.addView(splashTitle);
+        splashView.addView(splashMessage);
+        root.addView(splashView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
         setContentView(root);
     }
 
@@ -210,13 +267,15 @@ public class MainActivity extends Activity {
             return;
         }
         progressBar.setVisibility(View.VISIBLE);
+        splashView.setVisibility(View.VISIBLE);
         errorView.setVisibility(View.GONE);
-        webView.setVisibility(View.VISIBLE);
+        webView.setVisibility(View.INVISIBLE);
         webView.loadUrl(BuildConfig.SITE_URL);
     }
 
     private void showError() {
         progressBar.setVisibility(View.GONE);
+        splashView.setVisibility(View.GONE);
         webView.setVisibility(View.GONE);
         errorView.setVisibility(View.VISIBLE);
     }
