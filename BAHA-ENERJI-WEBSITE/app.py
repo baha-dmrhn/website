@@ -92,6 +92,19 @@ BARAJ_ARCHIVE_CACHE: dict[str, Any] = {
     "payload": {"byDate": {}, "availableDates": [], "recordCount": 0},
 }
 BARAJ_ARCHIVE_LOCK = threading.Lock()
+ACTIVE_FULLNESS_CACHE: dict[str, dict[str, Any]] = {}
+ACTIVE_FULLNESS_CACHE_LOCK = threading.Lock()
+BARAJ_BASIN_HISTORY_CACHE: dict[str, Any] = {
+    "archive_mtime": None,
+    "client_key": None,
+    "payload": None,
+    "expires": 0.0,
+}
+BARAJ_BASIN_HISTORY_CACHE_LOCK = threading.Lock()
+EXECUTIVE_REPORT_CACHE: dict[str, dict[str, Any]] = {}
+EXECUTIVE_REPORT_CACHE_LOCK = threading.Lock()
+STATIC_FILE_CACHE: dict[tuple[str, str, str, bool], dict[str, Any]] = {}
+STATIC_FILE_CACHE_LOCK = threading.Lock()
 LOGIN_LIMITER = LoginRateLimiter(
     max_attempts=int(os.getenv("BAHA_LOGIN_MAX_ATTEMPTS", "5")),
     window_seconds=int(os.getenv("BAHA_LOGIN_WINDOW_SECONDS", "600")),
@@ -199,7 +212,8 @@ def _market_dashboard(
         selected_day = date.fromisoformat(selected_date)
     except ValueError as exc:
         raise ValueError("Geçerli bir tarih seçin.") from exc
-    if selected_day > datetime.now(URETIM.TR_TZ).date():
+    today = datetime.now(URETIM.TR_TZ).date()
+    if selected_day > today:
         raise ValueError("Bugünden ileri bir tarih seçilemez.")
 
     now = time.time()
@@ -1097,7 +1111,19 @@ def _consumption_forecast(
     return payload
 
 
-def _active_fullness(client: Any) -> dict[str, Any]:
+def _active_fullness(
+    client: Any,
+    *,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    now = time.time()
+    client_key = f"{client.__class__.__module__}.{client.__class__.__qualname__}"
+    if not force_refresh:
+        with ACTIVE_FULLNESS_CACHE_LOCK:
+            cached_entry = ACTIVE_FULLNESS_CACHE.get(client_key)
+            if cached_entry and cached_entry["expires"] > now:
+                return {**cached_entry["payload"], "cached": True}
+
     payload = client._post_json(
         "/v1/dams/data/active-fullness",
         {"page": {"number": 1, "size": 500}},
@@ -1118,7 +1144,17 @@ def _active_fullness(client: Any) -> dict[str, Any]:
             if row.get("date")
         }
     )
-    return {"items": normalized, "availableDates": available_dates}
+    result = {
+        "items": normalized,
+        "availableDates": available_dates,
+        "cached": False,
+    }
+    with ACTIVE_FULLNESS_CACHE_LOCK:
+        ACTIVE_FULLNESS_CACHE[client_key] = {
+            "payload": result,
+            "expires": time.time() + 300,
+        }
+    return result
 
 
 _XLSX_MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -1728,6 +1764,23 @@ def _basin_risk_analysis(
 def _baraj_basin_history(client: Any) -> dict[str, Any]:
     """Excel arşivi ile son EPİAŞ kaydını havza zaman serilerine dönüştür."""
 
+    archive_mtime = (
+        BARAJ_ARCHIVE_XLSX.stat().st_mtime_ns
+        if BARAJ_ARCHIVE_XLSX.is_file()
+        else None
+    )
+    client_key = f"{client.__class__.__module__}.{client.__class__.__qualname__}"
+    now = time.time()
+    with BARAJ_BASIN_HISTORY_CACHE_LOCK:
+        cached_payload = BARAJ_BASIN_HISTORY_CACHE.get("payload")
+        if (
+            cached_payload is not None
+            and BARAJ_BASIN_HISTORY_CACHE.get("archive_mtime") == archive_mtime
+            and BARAJ_BASIN_HISTORY_CACHE.get("client_key") == client_key
+            and BARAJ_BASIN_HISTORY_CACHE.get("expires", 0.0) > now
+        ):
+            return {**cached_payload, "cached": True}
+
     archive = _baraj_archive()
     rows_by_date: dict[str, dict[str, dict[str, Any]]] = {}
     for selected_date, items in (archive.get("byDate") or {}).items():
@@ -1819,7 +1872,7 @@ def _baraj_basin_history(client: Any) -> dict[str, Any]:
         )
 
     all_dates = sorted(rows_by_date)
-    return {
+    result = {
         "startDate": all_dates[0] if all_dates else None,
         "endDate": all_dates[-1] if all_dates else None,
         "basins": basins,
@@ -1832,6 +1885,16 @@ def _baraj_basin_history(client: Any) -> dict[str, Any]:
             "girişi, üretim programı ve baraj hacim farklarını içermez."
         ),
     }
+    with BARAJ_BASIN_HISTORY_CACHE_LOCK:
+        BARAJ_BASIN_HISTORY_CACHE.update(
+            {
+                "archive_mtime": archive_mtime,
+                "client_key": client_key,
+                "payload": result,
+                "expires": time.time() + 300,
+            }
+        )
+    return result
 
 
 def _baraj_basin_xlsx(payload: dict[str, Any], basin_name: str) -> bytes:
@@ -2980,8 +3043,16 @@ def _executive_dashboard(selected_date: str, client: Any) -> dict[str, Any]:
         selected_day = date.fromisoformat(selected_date)
     except ValueError as exc:
         raise ValueError("Rapor tarihi YYYY-AA-GG biçiminde olmalıdır.") from exc
-    if selected_day > datetime.now(URETIM.TR_TZ).date():
+    today = datetime.now(URETIM.TR_TZ).date()
+    if selected_day > today:
         raise ValueError("Gelecek tarihli rapor oluşturulamaz.")
+
+    cache_key = selected_day.isoformat()
+    now_timestamp = time.time()
+    with EXECUTIVE_REPORT_CACHE_LOCK:
+        cached = EXECUTIVE_REPORT_CACHE.get(cache_key)
+        if cached and cached.get("expires", 0.0) > now_timestamp:
+            return {**cached["payload"], "cached": True}
 
     modules: dict[str, Any] = {}
     errors: dict[str, str] = {}
@@ -3078,7 +3149,7 @@ def _executive_dashboard(selected_date: str, client: Any) -> dict[str, Any]:
         errors,
     )
 
-    return {
+    report = {
         "date": selected_date,
         "generatedAt": datetime.now(URETIM.TR_TZ).isoformat(timespec="seconds"),
         "modules": modules,
@@ -3088,7 +3159,16 @@ def _executive_dashboard(selected_date: str, client: Any) -> dict[str, Any]:
         "availableModules": [
             name for name, payload in modules.items() if payload is not None
         ],
+        "cached": False,
     }
+    if not errors:
+        ttl = 300 if selected_day >= today else 21_600
+        with EXECUTIVE_REPORT_CACHE_LOCK:
+            EXECUTIVE_REPORT_CACHE[cache_key] = {
+                "payload": report,
+                "expires": time.time() + ttl,
+            }
+    return report
 
 
 def _executive_xlsx(report: dict[str, Any]) -> bytes:
@@ -3107,6 +3187,7 @@ def _executive_xlsx(report: dict[str, Any]) -> bytes:
     consumption_summary = consumption.get("summary") or {}
     errors = report.get("errors") or {}
     comparisons = report.get("comparisons") or []
+    action_items = _executive_action_items(report)
 
     overview_rows = [
         [("Baha Enerji — Günlük Yönetici Raporu", 4), (None, 0)],
@@ -3125,6 +3206,24 @@ def _executive_xlsx(report: dict[str, Any]) -> bytes:
         [("Tüketim zirvesi (MWh)", 0), (consumption_summary.get("maximum"), 2)],
         [("Veri durumu", 1), ("Eksiksiz" if not errors else f"{len(errors)} modülde uyarı", 0)],
     ]
+    overview_rows.append(
+        [("İlk aksiyon", 1), (action_items[0]["title"] if action_items else "—", 0)]
+    )
+    action_rows = [[
+        ("Alan", 1),
+        ("Aksiyon", 1),
+        ("Değer", 1),
+        ("Durum", 1),
+        ("Not", 1),
+    ]]
+    action_rows.extend([
+        (item.get("label") or "—", 0),
+        (item.get("title") or "—", 0),
+        (item.get("value") or "—", 0),
+        (item.get("level") or "normal", 0),
+        (item.get("detail") or "—", 0),
+    ] for item in action_items)
+
     comparison_rows = [[
         ("Kıyas", 1),
         ("Tarih", 1),
@@ -3192,6 +3291,7 @@ def _executive_xlsx(report: dict[str, Any]) -> bytes:
     ] for row in consumption.get("rows") or [])
 
     return _xlsx_workbook((
+        ("Aksiyonlar", URETIM._xlsx_sheet(action_rows, widths=[16, 34, 24, 16, 62], freeze_row=1, auto_filter=True)),
         ("Yönetici Özeti", URETIM._xlsx_sheet(overview_rows, widths=[38, 36])),
         ("Takvim Kıyası", URETIM._xlsx_sheet(comparison_rows, widths=[25, 16, 30, 20, 15, 20, 15, 18, 15, 22, 15, 24, 15], freeze_row=1, auto_filter=True)),
         ("Piyasa", URETIM._xlsx_sheet(market_rows, widths=[12, 19, 19, 16, 16, 23], freeze_row=1, auto_filter=True)),
@@ -3210,6 +3310,134 @@ def _tr_report_number(value: Any, digits: int = 2) -> str:
         return "—"
     formatted = f"{number:,.{digits}f}"
     return formatted.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _executive_action_items(report: dict[str, Any]) -> list[dict[str, str]]:
+    modules = report.get("modules") or {}
+    market = modules.get("market") or {}
+    market_summary = market.get("summary") or {}
+    market_rows = market.get("rows") or []
+    dam_summary = report.get("damSummary") or {}
+    dam_items = (modules.get("dams") or {}).get("items") or []
+    production_summary = (modules.get("production") or {}).get("summary") or {}
+    consumption_summary = (modules.get("consumption") or {}).get("summary") or {}
+    errors = report.get("errors") or {}
+
+    def item(
+        label: str,
+        title: str,
+        value: str,
+        detail: str,
+        level: str = "normal",
+    ) -> dict[str, str]:
+        return {
+            "label": label,
+            "title": title,
+            "value": value,
+            "detail": detail,
+            "level": level,
+        }
+
+    ptf_average = _finite_float(
+        (market_summary.get("ptfAverageByCurrency") or {}).get("TRY")
+        or market_summary.get("ptfAverage")
+    )
+    ptf_points = [
+        row for row in market_rows
+        if _finite_float(row.get("ptf")) is not None
+    ]
+    peak_ptf = max(
+        ptf_points,
+        key=lambda row: _finite_float(row.get("ptf")) or 0,
+        default={},
+    )
+    peak_value = _finite_float(peak_ptf.get("ptf"))
+    if ptf_average is not None and peak_value is not None and ptf_average:
+        peak_gap = (peak_value - ptf_average) / ptf_average * 100
+        price_level = "critical" if peak_gap >= 25 else "warning" if peak_gap >= 12 else "good"
+        price_detail = (
+            f"{peak_ptf.get('time') or '—'} saatindeki zirve, günlük PTF "
+            f"ortalamasının %{_tr_report_number(abs(peak_gap), 1)} "
+            f"{'üzerinde' if peak_gap >= 0 else 'altında'}."
+        )
+        price_value = f"{_tr_report_number(peak_value)} TL/MWh"
+    else:
+        price_level = "warning"
+        price_value = "Veri yok"
+        price_detail = "PTF zirvesi için yeterli saatlik veri bulunamadı."
+
+    critical_dams = [
+        item for item in dam_items
+        if (value := _fullness_number(item)) is not None and value <= 30
+    ]
+    low_dams = [
+        item for item in dam_items
+        if (value := _fullness_number(item)) is not None and value <= 50
+    ]
+    daily_change = _finite_float(dam_summary.get("dailyChange"))
+    if critical_dams:
+        dam_level = "critical"
+        dam_value = f"{len(critical_dams)} kritik baraj"
+        dam_detail = "Doluluk %30 ve altında olan barajlar öncelikli takip edilmeli."
+    elif low_dams:
+        dam_level = "warning"
+        dam_value = f"{len(low_dams)} düşük baraj"
+        dam_detail = "Doluluk %50 ve altında olan barajlar yakın izleme listesinde."
+    elif daily_change is not None and daily_change < -1:
+        dam_level = "warning"
+        dam_value = f"↓ {_tr_report_number(abs(daily_change))} puan"
+        dam_detail = "Ortalama doluluk önceki yayınlanan güne göre belirgin azaldı."
+    else:
+        dam_level = "good"
+        dam_value = "Stabil"
+        dam_detail = "Kritik doluluk eşiğinde belirgin baraj yoğunluğu görünmüyor."
+
+    deviation = _finite_float(production_summary.get("deviationPct"))
+    if deviation is None:
+        production_level = "warning"
+        production_value = "Veri yok"
+        production_detail = "UEVM ve UEÇM sapması hesaplanamadı."
+    else:
+        abs_deviation = abs(deviation)
+        production_level = "critical" if abs_deviation >= 8 else "warning" if abs_deviation >= 4 else "good"
+        sign = "+" if deviation > 0 else "−" if deviation < 0 else "±"
+        production_value = f"{sign}%{_tr_report_number(abs_deviation)}"
+        production_detail = (
+            "UEVM ile UEÇM arasındaki sapma operasyonel izleme gerektiriyor."
+            if abs_deviation >= 4
+            else "Üretim programı ile gerçekleşen üretim yakın seyrediyor."
+        )
+
+    available_hours = int(consumption_summary.get("availableHours") or 0)
+    maximum = _finite_float(consumption_summary.get("maximum"))
+    if maximum is None:
+        consumption_level = "warning"
+        consumption_value = "Veri bekleniyor"
+        consumption_detail = "Tüketim eğrisi için yeterli saatlik veri yayımlanmadı."
+    else:
+        consumption_level = "warning" if available_hours < 18 else "good"
+        consumption_value = f"{_tr_report_number(maximum)} MWh"
+        consumption_detail = (
+            f"Zirve {consumption_summary.get('maximumHour') or '—'} saatinde; "
+            f"{available_hours}/24 saat yayımlandı."
+        )
+
+    if errors:
+        data_level = "warning"
+        data_value = f"{len(errors)} uyarı"
+        data_detail = "Eksik modül varsa rapordaki karar notları temkinli okunmalı."
+    else:
+        data_level = "good"
+        data_value = "Tam"
+        data_detail = "Rapor tüm ana veri gruplarından üretildi."
+
+    return [
+        item("FİYAT", "PTF zirvesini kontrol et", price_value, price_detail, price_level),
+        item("BARAJ", "Doluluk eşiğini izle", dam_value, dam_detail, dam_level),
+        item("ÜRETİM", "UEVM–UEÇM sapmasını takip et", production_value, production_detail, production_level),
+        item("TÜKETİM", "Talep zirvesini izle", consumption_value, consumption_detail, consumption_level),
+        item("VERİ", "Rapor güvenini kontrol et", data_value, data_detail, data_level),
+    ]
 
 
 def _executive_report_html(report: dict[str, Any], *, auto_print: bool = False) -> str:
@@ -3398,6 +3626,19 @@ def _executive_report_html(report: dict[str, Any], *, auto_print: bool = False) 
         f'''<section class="report-card report-calendar-compare"><header><span>00 / TAKVİM KIYASI</span><h2>Seçili günü benzer günlerle kıyaslayın</h2><p>Dün, geçen hafta aynı gün ve geçen yıl aynı ISO hafta-gün eşleşmesi kullanılır; geçen yıl kıyası aynı takvim tarihine sabitlenmez.</p></header><table><thead><tr><th>Dönem</th>{comparison_header}</tr></thead><tbody>{comparison_rows}</tbody></table></section>'''
         if comparisons else ""
     )
+    action_items = _executive_action_items(report)
+    action_cards = "".join(
+        f'<article class="report-action {xml_escape(str(item.get("level") or "normal"))}">'
+        f'<span>{xml_escape(str(item.get("label") or "—"))}</span>'
+        f'<h3>{xml_escape(str(item.get("title") or "—"))}</h3>'
+        f'<b>{xml_escape(str(item.get("value") or "—"))}</b>'
+        f'<p>{xml_escape(str(item.get("detail") or "—"))}</p></article>'
+        for item in action_items
+    )
+    action_section = (
+        f'''<section class="report-card report-actions"><header><span>05 / AKSİYON LİSTESİ</span><h2>Bugün neye bakmalı?</h2><p>Raporun ana sinyalleri fiyat, baraj, üretim, tüketim ve veri güveni başlıklarında önceliklendirildi.</p></header><div class="report-actions-grid">{action_cards}</div></section>'''
+        if action_cards else ""
+    )
     auto_attribute = "true" if auto_print else "false"
     return f'''<!doctype html>
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -3410,10 +3651,11 @@ def _executive_report_html(report: dict[str, Any], *, auto_print: bool = False) 
 <section class="report-intro"><div><span>GÜNÜN ÖZETİ</span><h1>Enerjinin bütün resmi,<br>tek raporda.</h1></div><p>Piyasa, baraj, üretim ve tüketim göstergeleri EPİAŞ verileriyle aynı tarih için bir araya getirildi.</p></section>
 <section class="report-kpis"><article><span>PTF ORTALAMA</span><strong>{_tr_report_number(ptf_average)}</strong><small>TL/MWh</small></article><article><span>ORT. BARAJ DOLULUĞU</span><strong>%{_tr_report_number(dam_summary.get("average"))}</strong><small>{dam_summary.get("count") or 0} baraj</small></article><article><span>UEVM · UEÇM SAPMASI</span><strong>%{_tr_report_number(production_summary.get("deviationPct"))}</strong><small>{_tr_report_number(production_summary.get("difference"))} MWh</small></article><article><span>TÜKETİM ZİRVESİ</span><strong>{_tr_report_number(consumption_summary.get("maximum"))}</strong><small>{xml_escape(str(consumption_summary.get("maximumHour") or "—"))}</small></article></section>
 {comparison_section}
+{action_section}
 <section class="report-grid"><article class="report-card market"><header><span>01 / PİYASA</span><h2>Günlük fiyat görünümü</h2></header><div class="report-stat-list"><div><span>SMF ortalama</span><b>{_tr_report_number(market_summary.get("smfAverage"))} TL/MWh</b></div><div><span>PTF zirvesi</span><b>{_tr_report_number(peak_ptf.get("ptf"))} · {xml_escape(str(peak_ptf.get("time") or "—"))}</b></div><div><span>Toplam YAL / YAT</span><b>{_tr_report_number(market_summary.get("yalTotal"))} / {_tr_report_number(market_summary.get("yatTotal"))} MWh</b></div><div><span>Ertesi gün PTF</span><b>{xml_escape(str(next_publication))} · {_tr_report_number(next_average)} TL/MWh</b></div></div></article>
 <article class="report-card dams"><header><span>02 / BARAJLAR</span><h2>Doluluk görünümü</h2></header><div class="report-stat-list"><div><span>En yüksek</span><b>{xml_escape(str(highest_dam.get("name") or "—"))} · %{_tr_report_number(highest_dam.get("value"))}</b></div><div><span>En düşük</span><b>{xml_escape(str(lowest_dam.get("name") or "—"))} · %{_tr_report_number(lowest_dam.get("value"))}</b></div><div><span>Kaynak</span><b>{xml_escape(str(dam_summary.get("source") or "—"))}</b></div><div><span>Günlük değişim</span><b>{xml_escape(daily_dam_change_value)}</b><small>{xml_escape(daily_dam_change_detail)}</small></div></div></article></section>
 <section class="report-grid tables"><article class="report-card"><header><span>03 / BARAJ LİSTESİ</span><h2>En yüksek doluluklar</h2></header><table><thead><tr><th>Baraj</th><th>Havza</th><th>Doluluk</th></tr></thead><tbody>{dam_table}</tbody></table></article><article class="report-card"><header><span>04 / ÜRETİM</span><h2>Kaynak grupları</h2></header><table><thead><tr><th>Grup</th><th>Üretim</th><th>Pay</th></tr></thead><tbody>{group_rows}</tbody></table></article></section>
-<section class="report-card report-highlights"><header><span>05 / GÜNÜN ÖZETİ</span><h2>Öne çıkan gelişmeler</h2></header><div class="report-highlights-grid">
+<section class="report-card report-highlights"><header><span>06 / GÜNÜN ÖZETİ</span><h2>Öne çıkan gelişmeler</h2></header><div class="report-highlights-grid">
 <article class="report-highlight system"><i>01</i><div><span>SİSTEM DENGESİ</span><b>{xml_escape(system_direction_value)}</b><p>{xml_escape(system_direction_detail)}</p></div></article>
 <article class="report-highlight mix"><i>02</i><div><span>ÜRETİM KARMASI</span><b>{leading_group_value}</b><p>{leading_group_detail}</p></div></article>
 <article class="report-highlight production"><i>03</i><div><span>ÜRETİM DENGESİ</span><b>{production_balance_value}</b><p>{xml_escape(production_insight)}</p></div></article>
@@ -3650,7 +3892,23 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        content = candidate.read_bytes()
+        file_stat = candidate.stat()
+        cache_key = (str(candidate.resolve()), "", "", False)
+        with STATIC_FILE_CACHE_LOCK:
+            cached_static = STATIC_FILE_CACHE.get(cache_key)
+            if (
+                cached_static
+                and cached_static.get("mtime") == file_stat.st_mtime_ns
+                and cached_static.get("size") == file_stat.st_size
+            ):
+                content = cached_static["content"]
+            else:
+                content = candidate.read_bytes()
+                STATIC_FILE_CACHE[cache_key] = {
+                    "mtime": file_stat.st_mtime_ns,
+                    "size": file_stat.st_size,
+                    "content": content,
+                }
         suffix = candidate.suffix.lower()
         text_suffixes = {
             ".html",
