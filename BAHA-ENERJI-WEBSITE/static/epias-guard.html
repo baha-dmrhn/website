@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EPİAŞ Koruma Paneli | Baha Enerji</title>
+  <link rel="stylesheet" href="/epias-guard.css">
+</head>
+<body>
+  <main class="guard-page">
+    <header class="guard-hero">
+      <p class="guard-kicker">EPİAŞ UYUMLULUK</p>
+      <div>
+        <h1>Limit ve koruma paneli</h1>
+        <p>EPİAŞ CAS ve veri çağrılarını güvenli sınırların altında tutan canlı koruma katmanı.</p>
+      </div>
+      <a class="guard-back" href="/piyasa/">Panele dön</a>
+    </header>
+
+    <section class="guard-status" id="guardStatus">
+      <span class="guard-dot"></span>
+      <div>
+        <strong id="guardState">Kontrol ediliyor…</strong>
+        <small id="guardUpdated">—</small>
+      </div>
+    </section>
+
+    <section class="guard-grid">
+      <article class="guard-card">
+        <span>01 / TGT</span>
+        <h2>Token alma freni</h2>
+        <dl>
+          <div><dt>Bizim limit</dt><dd id="tgtLimit">—</dd></div>
+          <div><dt>EPİAŞ kullanıcı</dt><dd id="tgtOfficialUser">—</dd></div>
+          <div><dt>EPİAŞ IP</dt><dd id="tgtOfficialIp">—</dd></div>
+          <div><dt>Son dakika</dt><dd id="tgtMinute">—</dd></div>
+          <div><dt>Cooldown</dt><dd id="tgtCooldown">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="guard-card">
+        <span>02 / VERİ</span>
+        <h2>EPİAŞ veri çağrıları</h2>
+        <dl>
+          <div><dt>Bizim limit</dt><dd id="apiLimit">—</dd></div>
+          <div><dt>Son dakika</dt><dd id="apiMinute">—</dd></div>
+          <div><dt>Bekletilen</dt><dd id="apiWaits">—</dd></div>
+          <div><dt>Acil fren</dt><dd id="apiBackoffs">—</dd></div>
+          <div><dt>Cooldown</dt><dd id="apiCooldown">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="guard-card">
+        <span>03 / TEK İSTEK</span>
+        <h2>Aynı isteği birleştir</h2>
+        <dl>
+          <div><dt>Durum</dt><dd id="singleStatus">—</dd></div>
+          <div><dt>Paylaşılan</dt><dd id="singleJoined">—</dd></div>
+          <div><dt>Aktif</dt><dd id="singleActive">—</dd></div>
+          <div><dt>Son anahtar</dt><dd id="singleKey">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="guard-card">
+        <span>04 / GİRİŞ</span>
+        <h2>Hatalı giriş koruması</h2>
+        <dl>
+          <div><dt>Bizim sınır</dt><dd id="loginLimit">—</dd></div>
+          <div><dt>EPİAŞ sınırı</dt><dd id="loginOfficial">—</dd></div>
+          <div><dt>Blok süresi</dt><dd id="loginBlock">—</dd></div>
+          <div><dt>TGT kullanımı</dt><dd id="tgtTtl">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="guard-card">
+        <span>05 / CACHE</span>
+        <h2>Arka plan veri toplama</h2>
+        <dl>
+          <div><dt>Durum</dt><dd id="bgStatus">—</dd></div>
+          <div><dt>Son çalışma</dt><dd id="bgLastWake">—</dd></div>
+          <div><dt>Sıradaki kontrol</dt><dd id="bgNextWake">—</dd></div>
+          <div><dt>Aktif oturum</dt><dd id="bgSession">—</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="guard-card guard-wide">
+      <span>06 / KAYIT</span>
+      <h2>Son EPİAŞ durumu</h2>
+      <div class="guard-log">
+        <div><strong>Toplam EPİAŞ HTTP</strong><small id="httpTotal">—</small></div>
+        <div><strong>Hata toplamı</strong><small id="httpErrors">—</small></div>
+        <div><strong>Son hata</strong><small id="lastError">—</small></div>
+        <div><strong>Son istek</strong><small id="lastRequest">—</small></div>
+      </div>
+      <ul id="guardNotes" class="guard-notes"></ul>
+    </section>
+  </main>
+  <script src="/epias-guard.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101c35">
+  <title>Baha Sistem Yönü Tahmini</title>
+</head>
+<body>
+  <main class="system-forecast-page" id="systemForecastPage">
+    <header class="system-hero">
+      <div>
+        <span class="system-eyebrow">PANEL / TAHMİN</span>
+        <h1>Sistem Yönü Tahmini</h1>
+        <p>Yarının saatlik sistem yönünü, geçmiş günler, haftalar, aylar ve yıllardaki benzer EPİAŞ sistem yönü desenleriyle tahmin edin.</p>
+      </div>
+    </header>
+
+    <section id="system-summary" class="system-toolbar">
+      <div>
+        <span>Tahmin tarihi</span>
+        <strong id="forecastTargetDate">—</strong>
+        <small id="forecastTargetLabel">Yarın</small>
+      </div>
+      <div>
+        <span>Model</span>
+        <strong>Geçmiş benzerlik</strong>
+        <small>Gün · hafta · ay · yıl ağırlıklı</small>
+      </div>
+      <button id="forecastRefresh" type="button">↻ Tahmini yenile</button>
+    </section>
+
+    <section id="forecastError" class="system-alert" hidden></section>
+
+    <section class="system-kpi-grid" aria-label="Tahmin özeti">
+      <article class="system-kpi">
+        <span>BASKIN TAHMİN</span>
+        <strong id="dominantDirection">—</strong>
+        <small id="dominantDetail">Saatlik tahmin hazırlanıyor</small>
+      </article>
+      <article class="system-kpi">
+        <span>ORTALAMA GÜVEN</span>
+        <strong id="averageConfidence">—</strong>
+        <small>Benzer geçmiş desen ağırlığı</small>
+      </article>
+      <article class="system-kpi">
+        <span>ÖRNEK GÜN</span>
+        <strong id="sampleCount">—</strong>
+        <small id="publishedHours">EPİAŞ saatlik yön verisi</small>
+      </article>
+      <article class="system-kpi">
+        <span>DÜŞÜK GÜVEN</span>
+        <strong id="lowConfidenceCount">—</strong>
+        <small id="lowConfidenceHours">Yakından izlenecek saatler</small>
+      </article>
+    </section>
+
+    <section id="system-timeline" class="system-panel">
+      <header>
+        <div>
+          <span>01 / SAATLİK TAHMİN</span>
+          <h2>Yarın sistem yönü zaman şeridi</h2>
+        </div>
+        <div class="system-legend">
+          <span class="deficit"><i></i>Enerji Açığı</span>
+          <span class="surplus"><i></i>Enerji Fazlası</span>
+          <span class="balanced"><i></i>Dengede</span>
+        </div>
+      </header>
+      <div id="forecastTimeline" class="forecast-timeline">
+        <div class="system-loading">Tahmin hazırlanıyor…</div>
+      </div>
+    </section>
+
+    <section class="system-layout">
+      <article id="system-probability" class="system-panel">
+        <header>
+          <div>
+            <span>02 / OLASILIK</span>
+            <h2>Saat bazında olasılıklar</h2>
+          </div>
+        </header>
+        <div id="probabilityRows" class="probability-rows"></div>
+      </article>
+
+      <aside id="system-method" class="system-panel system-method">
+        <header>
+          <div>
+            <span>03 / METOT</span>
+            <h2>Geçmiş nasıl okunuyor?</h2>
+          </div>
+        </header>
+        <p id="methodDescription">Model açıklaması hazırlanıyor…</p>
+        <div id="methodBuckets" class="method-buckets"></div>
+      </aside>
+    </section>
+
+    <section id="system-samples" class="system-panel">
+      <header>
+        <div>
+          <span>04 / GEÇMİŞ ÖRNEKLER</span>
+          <h2>Kullanılan referans günler</h2>
+        </div>
+        <small id="sampleMeta">—</small>
+      </header>
+      <div class="sample-table-wrap">
+        <table class="sample-table">
+          <thead>
+            <tr>
+              <th>Tarih</th>
+              <th>Kaynak</th>
+              <th>Baskın yön</th>
+              <th>Saat</th>
+              <th>Ağırlık</th>
+            </tr>
+          </thead>
+          <tbody id="sampleTableBody">
+            <tr><td colspan="5">Örnekler hazırlanıyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="system-validation" class="system-panel system-validation">
+      <header>
+        <div>
+          <span>05 / TAHMİN DOĞRULAMA</span>
+          <h2>Tahmin gerçeklerle tuttu mu?</h2>
+        </div>
+        <small id="validationMeta">Yayınlanan EPİAŞ saatleriyle karşılaştırılır</small>
+      </header>
+      <div class="validation-toolbar">
+        <label>
+          <span>Karşılaştırma günü</span>
+          <input id="validationDate" type="date">
+        </label>
+        <button id="validationRefresh" type="button">Karşılaştır</button>
+        <p id="validationNote">Yarın geldiğinde bugünün tahmini, gerçek sistem yönüyle saat saat kıyaslanır.</p>
+      </div>
+      <div class="validation-summary" aria-label="Tahmin doğrulama özeti">
+        <div><span>Başarı</span><strong id="validationAccuracy">—</strong><small id="validationStatus">Gerçek veri bekleniyor</small></div>
+        <div><span>Doğru saat</span><strong id="validationCorrect">—</strong><small id="validationCompared">0 saat karşılaştırıldı</small></div>
+        <div><span>Eksik veri</span><strong id="validationMissing">—</strong><small>EPİAŞ yayın durumuna göre</small></div>
+      </div>
+      <div class="validation-table-wrap">
+        <table class="validation-table">
+          <thead>
+            <tr>
+              <th>Saat</th>
+              <th>Tahmin</th>
+              <th>Gerçek</th>
+              <th>Sonuç</th>
+            </tr>
+          </thead>
+          <tbody id="validationTableBody">
+            <tr><td colspan="4">Karşılaştırma hazırlanıyor…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="system-note">
+      <strong>Not</strong>
+      <p>Bu ekran resmî EPİAŞ tahmini değildir. Geçmiş sistem yönü davranışlarını saat bazında okuyup operasyonel izleme için olasılık üretir.</p>
+    </section>
+  </main>
+  <script src="/system-direction-forecast.js?v=3" defer></script>
+</body>
+</html>

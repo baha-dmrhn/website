@@ -1,0 +1,19 @@
+{
+  "name": "Baha Enerji Piyasa Paneli",
+  "short_name": "Baha Enerji",
+  "description": "EPİAŞ SMF, PTF, YAL ve YAT verilerini mobil uyumlu olarak izleyin.",
+  "lang": "tr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101c35",
+  "theme_color": "#101c35",
+  "icons": [
+    {"src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ],
+  "shortcuts": [
+    {"name": "Saatlik Veri", "url": "/#hourly-data"},
+    {"name": "Detaylı Veri", "url": "/#detailed-data"}
+  ]
+}
