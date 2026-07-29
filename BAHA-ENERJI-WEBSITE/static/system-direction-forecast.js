@@ -139,7 +139,7 @@ function renderMethod(method = {}) {
     <div class="context-input ${esc(input.status || "fallback")}">
       <i></i>
       <span>${esc(input.label)}</span>
-      <strong>${input.status === "ready" ? "Kullanılıyor" : "Yedek model"}</strong>
+      <strong>${esc(input.statusLabel || (input.status === "ready" ? "Kullanılıyor" : "Yedek model"))}</strong>
       <small>${esc(input.detail || "")}</small>
     </div>
   `).join("");
@@ -360,7 +360,13 @@ function renderValidationDirection(rows = []) {
 function renderValidation(data) {
   const summary = data.summary || {};
   const rows = data.rows || [];
-  setText("validationMeta", `${fmtDate(data.date)} · ${summary.statusLabel || "Karşılaştırma"}`);
+  const sourceLabel = data.forecastSource === "locked_ledger"
+    ? `${Number(data.forecastLedger?.recordedHours || 0)} saat kilitli yayın`
+    : "Yeniden oluşturulan tahmin";
+  setText(
+    "validationMeta",
+    `${fmtDate(data.date)} · ${summary.statusLabel || "Karşılaştırma"} · ${sourceLabel}`,
+  );
   setText(
     "validationAccuracy",
     summary.accuracy == null ? "—" : `%${fmtNumber(summary.accuracy)}`,
@@ -405,9 +411,14 @@ function renderForecast(data) {
   const summary = data.summary || {};
   const schedule = data.schedule || {};
   const model = data.modelSummary || {};
+  const calendar = data.calendarContext || {};
   const counts = summary.predictedCounts || {};
   const lowHours = summary.lowConfidenceHours || [];
-  const targetLabel = `${data.targetLabel || "Tahmin"} · ${new Date(`${data.targetDate}T00:00:00+03:00`).toLocaleDateString("tr-TR", { weekday: "long" })}`;
+  const targetLabel = [
+    data.targetLabel || "Tahmin",
+    new Date(`${data.targetDate}T00:00:00+03:00`).toLocaleDateString("tr-TR", { weekday: "long" }),
+    calendar.label,
+  ].filter(Boolean).join(" · ");
 
   setText("forecastHeroText", schedule.detail || "Geçmiş sistem yönü desenleri saat bazında incelenir.");
   setText("forecastTargetDate", fmtDate(data.targetDate));
