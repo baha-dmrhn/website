@@ -25,6 +25,7 @@ import mimetypes
 import os
 import posixpath
 import re
+import sqlite3
 import ssl
 import sys
 import threading
@@ -94,6 +95,17 @@ SYSTEM_DIRECTION_HISTORY_CACHE: dict[str, dict[str, Any]] = {}
 SYSTEM_DIRECTION_HISTORY_CACHE_LOCK = threading.Lock()
 SYSTEM_DIRECTION_FORECAST_CACHE: dict[str, dict[str, Any]] = {}
 SYSTEM_DIRECTION_FORECAST_CACHE_LOCK = threading.Lock()
+SYSTEM_DIRECTION_LEDGER_LOCK = threading.Lock()
+SYSTEM_DIRECTION_LEDGER_ENABLED = os.getenv(
+    "BAHA_FORECAST_LEDGER_ENABLED",
+    "true",
+).strip().lower() not in {"0", "false", "no"}
+SYSTEM_DIRECTION_LEDGER_PATH = Path(
+    os.getenv(
+        "BAHA_FORECAST_LEDGER_PATH",
+        str(ROOT / ".forecast-ledger" / "system-direction.sqlite3"),
+    )
+).expanduser()
 SYSTEM_DIRECTION_MODEL_CACHE: dict[str, dict[str, Any]] = {}
 SYSTEM_DIRECTION_MODEL_CACHE_LOCK = threading.Lock()
 SYSTEM_DIRECTION_WEATHER_CACHE: dict[str, dict[str, Any]] = {}
@@ -735,6 +747,7 @@ DIRECTION_SOURCE_WEIGHTS = {
     "recent": 1.0,
     "weekly": 1.12,
     "monthly": 0.58,
+    "holiday_calendar": 1.32,
     "calendar_yearly": 0.84,
     "seasonal_yearly": 0.54,
     "yearly": 0.34,
@@ -743,10 +756,374 @@ DIRECTION_SOURCE_LABELS = {
     "recent": "Son günler",
     "weekly": "Aynı hafta günü",
     "monthly": "Aylık benzerlik",
+    "holiday_calendar": "Aynı tatil / arife günü",
     "calendar_yearly": "Geçmiş yıllar aynı ay/hafta/gün",
     "seasonal_yearly": "Geçmiş yıllar mevsim çevresi",
     "yearly": "Yıllık referans",
 }
+
+
+TURKEY_FIXED_HOLIDAYS = {
+    (1, 1): ("new-year", "Yılbaşı"),
+    (4, 23): ("national-sovereignty", "Ulusal Egemenlik ve Çocuk Bayramı"),
+    (5, 1): ("labour-day", "Emek ve Dayanışma Günü"),
+    (5, 19): ("youth-day", "Atatürk'ü Anma, Gençlik ve Spor Bayramı"),
+    (7, 15): ("democracy-day", "Demokrasi ve Millî Birlik Günü"),
+    (8, 30): ("victory-day", "Zafer Bayramı"),
+    (10, 29): ("republic-day", "Cumhuriyet Bayramı"),
+}
+TURKEY_RELIGIOUS_HOLIDAY_STARTS = {
+    2021: {"ramadan": date(2021, 5, 13), "sacrifice": date(2021, 7, 20)},
+    2022: {"ramadan": date(2022, 5, 2), "sacrifice": date(2022, 7, 9)},
+    2023: {"ramadan": date(2023, 4, 21), "sacrifice": date(2023, 6, 28)},
+    2024: {"ramadan": date(2024, 4, 10), "sacrifice": date(2024, 6, 16)},
+    2025: {"ramadan": date(2025, 3, 30), "sacrifice": date(2025, 6, 6)},
+    2026: {"ramadan": date(2026, 3, 20), "sacrifice": date(2026, 5, 27)},
+    2027: {"ramadan": date(2027, 3, 9), "sacrifice": date(2027, 5, 17)},
+    2028: {"ramadan": date(2028, 2, 26), "sacrifice": date(2028, 5, 5)},
+    2029: {"ramadan": date(2029, 2, 14), "sacrifice": date(2029, 4, 24)},
+    2030: {"ramadan": date(2030, 2, 4), "sacrifice": date(2030, 4, 13)},
+}
+
+
+def _turkey_holiday_dates(year: int) -> dict[date, dict[str, Any]]:
+    """Return date-level Turkish public-holiday features used by the model."""
+
+    holidays: dict[date, dict[str, Any]] = {}
+    for (month, day_number), (key, label) in TURKEY_FIXED_HOLIDAYS.items():
+        holiday_day = date(year, month, day_number)
+        holidays[holiday_day] = {
+            "key": key,
+            "label": label,
+            "family": "national",
+            "isHoliday": True,
+            "isEve": False,
+        }
+    republic_eve = date(year, 10, 28)
+    holidays[republic_eve] = {
+        "key": "republic-day-eve",
+        "label": "Cumhuriyet Bayramı arifesi",
+        "family": "eve",
+        "isHoliday": False,
+        "isEve": True,
+    }
+
+    religious = TURKEY_RELIGIOUS_HOLIDAY_STARTS.get(year, {})
+    for family, start_day in religious.items():
+        label = "Ramazan Bayramı" if family == "ramadan" else "Kurban Bayramı"
+        length = 3 if family == "ramadan" else 4
+        holidays[start_day - timedelta(days=1)] = {
+            "key": f"{family}-eve",
+            "label": f"{label} arifesi",
+            "family": "eve",
+            "isHoliday": False,
+            "isEve": True,
+        }
+        for offset in range(length):
+            holidays[start_day + timedelta(days=offset)] = {
+                "key": f"{family}-{offset + 1}",
+                "label": f"{label} {offset + 1}. gün",
+                "family": "religious",
+                "isHoliday": True,
+                "isEve": False,
+            }
+    return holidays
+
+
+def _turkey_calendar_context(day: date) -> dict[str, Any]:
+    """Describe holiday, bridge-day, season and school-break effects."""
+
+    calendars = {
+        year: _turkey_holiday_dates(year)
+        for year in {day.year - 1, day.year, day.year + 1}
+    }
+
+    def holiday_meta(check_day: date) -> dict[str, Any] | None:
+        return calendars.get(check_day.year, {}).get(check_day)
+
+    direct = holiday_meta(day)
+    previous_meta = holiday_meta(day - timedelta(days=1))
+    next_meta = holiday_meta(day + timedelta(days=1))
+    is_holiday = bool(direct and direct.get("isHoliday"))
+    is_eve = bool(direct and direct.get("isEve"))
+    is_bridge = bool(
+        not direct
+        and day.weekday() < 5
+        and (
+            (day.weekday() == 0 and next_meta and next_meta.get("isHoliday"))
+            or (
+                day.weekday() == 4
+                and previous_meta
+                and previous_meta.get("isHoliday")
+            )
+        )
+    )
+    is_before_holiday = bool(next_meta and next_meta.get("isHoliday"))
+    is_after_holiday = bool(previous_meta and previous_meta.get("isHoliday"))
+    school_break = bool(
+        (date(day.year, 6, 15) <= day <= date(day.year, 9, 15))
+        or day.month == 1
+        and day.day >= 20
+        or day.month == 2
+        and day.day <= 10
+    )
+    season = (
+        "winter"
+        if day.month in {12, 1, 2}
+        else "spring"
+        if day.month in {3, 4, 5}
+        else "summer"
+        if day.month in {6, 7, 8}
+        else "autumn"
+    )
+    family = str((direct or {}).get("family") or "")
+    if is_holiday:
+        day_type = "religious_holiday" if family == "religious" else "national_holiday"
+    elif is_eve:
+        day_type = "holiday_eve"
+    elif is_bridge:
+        day_type = "bridge_day"
+    elif day.weekday() >= 5:
+        day_type = "weekend"
+    else:
+        day_type = "weekday"
+    if direct:
+        label = str(direct.get("label") or "Özel takvim günü")
+    elif is_bridge:
+        label = "Köprü gün"
+    elif day.weekday() >= 5:
+        label = "Hafta sonu"
+    else:
+        label = "Normal iş günü"
+    return {
+        "date": day.isoformat(),
+        "dayType": day_type,
+        "label": label,
+        "holidayKey": (direct or {}).get("key"),
+        "holidayFamily": family or None,
+        "isHoliday": is_holiday,
+        "isEve": is_eve,
+        "isBridgeDay": is_bridge,
+        "isBeforeHoliday": is_before_holiday,
+        "isAfterHoliday": is_after_holiday,
+        "isSchoolBreak": school_break,
+        "season": season,
+    }
+
+
+def _turkey_calendar_vector(day: date) -> list[float]:
+    context = _turkey_calendar_context(day)
+    day_types = (
+        "national_holiday",
+        "religious_holiday",
+        "holiday_eve",
+        "bridge_day",
+        "weekend",
+    )
+    seasons = ("winter", "spring", "summer", "autumn")
+    return [
+        *(1.0 if context["dayType"] == day_type else 0.0 for day_type in day_types),
+        1.0 if context["isBeforeHoliday"] else 0.0,
+        1.0 if context["isAfterHoliday"] else 0.0,
+        1.0 if context["isSchoolBreak"] else 0.0,
+        *(1.0 if context["season"] == season else 0.0 for season in seasons),
+    ]
+
+
+def _matching_holiday_date(target_day: date, target_year: int) -> date | None:
+    target_key = _turkey_calendar_context(target_day).get("holidayKey")
+    if not target_key:
+        return None
+    for holiday_day, metadata in _turkey_holiday_dates(target_year).items():
+        if metadata.get("key") == target_key:
+            return holiday_day
+    return None
+
+
+def _system_direction_ledger_connection() -> sqlite3.Connection:
+    SYSTEM_DIRECTION_LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(
+        SYSTEM_DIRECTION_LEDGER_PATH,
+        timeout=4,
+    )
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA busy_timeout = 4000")
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS system_direction_forecasts (
+            target_date TEXT NOT NULL,
+            hour INTEGER NOT NULL CHECK(hour BETWEEN 0 AND 23),
+            category TEXT NOT NULL,
+            label TEXT NOT NULL,
+            confidence REAL NOT NULL,
+            probabilities_json TEXT NOT NULL,
+            forecast_mode TEXT NOT NULL,
+            generated_at TEXT NOT NULL,
+            stored_at TEXT NOT NULL,
+            calendar_json TEXT NOT NULL,
+            PRIMARY KEY (target_date, hour)
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_system_direction_stored_at "
+        "ON system_direction_forecasts(stored_at)"
+    )
+    return connection
+
+
+def _system_direction_ledger_store(payload: dict[str, Any]) -> dict[str, Any]:
+    """Lock the first genuinely published prediction for every target hour."""
+
+    if not SYSTEM_DIRECTION_LEDGER_ENABLED:
+        return {
+            "enabled": False,
+            "status": "disabled",
+            "rowCount": 0,
+            "insertedRows": 0,
+        }
+    target_date = str(payload.get("targetDate") or "")
+    generated_at = str(payload.get("generatedAt") or "")
+    forecast_mode = str(payload.get("forecastMode") or "day_ahead")
+    if not target_date or not generated_at:
+        return {
+            "enabled": True,
+            "status": "invalid",
+            "rowCount": 0,
+            "insertedRows": 0,
+        }
+    stored_at = (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+    calendar_context = payload.get("calendarContext") or {}
+    rows = [
+        row
+        for row in payload.get("forecastRows", [])
+        if (
+            not row.get("observed")
+            and row.get("category") in DIRECTION_CATEGORIES
+            and 0 <= int(row.get("hour", -1)) <= 23
+        )
+    ]
+    inserted_rows = 0
+    try:
+        with SYSTEM_DIRECTION_LEDGER_LOCK:
+            connection = _system_direction_ledger_connection()
+            try:
+                before = connection.total_changes
+                connection.executemany(
+                    """
+                    INSERT OR IGNORE INTO system_direction_forecasts (
+                        target_date, hour, category, label, confidence,
+                        probabilities_json, forecast_mode, generated_at,
+                        stored_at, calendar_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        (
+                            target_date,
+                            int(row["hour"]),
+                            str(row["category"]),
+                            str(row.get("label") or _direction_label(row["category"])),
+                            float(row.get("confidence") or 0.0),
+                            json.dumps(
+                                row.get("probabilities") or {},
+                                ensure_ascii=False,
+                                separators=(",", ":"),
+                            ),
+                            forecast_mode,
+                            generated_at,
+                            stored_at,
+                            json.dumps(
+                                calendar_context,
+                                ensure_ascii=False,
+                                separators=(",", ":"),
+                            ),
+                        )
+                        for row in rows
+                    ],
+                )
+                connection.commit()
+                inserted_rows = connection.total_changes - before
+                row_count = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM system_direction_forecasts "
+                        "WHERE target_date = ?",
+                        (target_date,),
+                    ).fetchone()[0]
+                )
+            finally:
+                connection.close()
+    except (OSError, sqlite3.Error, ValueError, TypeError) as exc:
+        return {
+            "enabled": True,
+            "status": "error",
+            "rowCount": 0,
+            "insertedRows": 0,
+            "detail": str(exc),
+        }
+    return {
+        "enabled": True,
+        "status": "locked",
+        "rowCount": row_count,
+        "insertedRows": inserted_rows,
+        "targetDate": target_date,
+        "firstPublicationProtected": True,
+    }
+
+
+def _system_direction_ledger_read(target_day: date) -> dict[str, Any]:
+    if not SYSTEM_DIRECTION_LEDGER_ENABLED:
+        return {"available": False, "rowCount": 0, "rows": []}
+    try:
+        with SYSTEM_DIRECTION_LEDGER_LOCK:
+            connection = _system_direction_ledger_connection()
+            try:
+                stored_rows = connection.execute(
+                    """
+                    SELECT hour, category, label, confidence,
+                           probabilities_json, forecast_mode, generated_at,
+                           stored_at, calendar_json
+                    FROM system_direction_forecasts
+                    WHERE target_date = ?
+                    ORDER BY hour
+                    """,
+                    (target_day.isoformat(),),
+                ).fetchall()
+            finally:
+                connection.close()
+    except (OSError, sqlite3.Error):
+        return {"available": False, "rowCount": 0, "rows": []}
+    rows: list[dict[str, Any]] = []
+    for stored in stored_rows:
+        try:
+            probabilities = json.loads(stored["probabilities_json"])
+        except (TypeError, json.JSONDecodeError):
+            probabilities = {}
+        rows.append(
+            {
+                "hour": int(stored["hour"]),
+                "time": f"{int(stored['hour']):02}:00",
+                "category": stored["category"],
+                "label": stored["label"],
+                "confidence": round(float(stored["confidence"]), 1),
+                "probabilities": probabilities,
+                "forecastMode": stored["forecast_mode"],
+                "generatedAt": stored["generated_at"],
+                "storedAt": stored["stored_at"],
+                "recorded": True,
+            }
+        )
+    return {
+        "available": bool(rows),
+        "rowCount": len(rows),
+        "rows": rows,
+        "generatedAt": rows[0]["generatedAt"] if rows else None,
+        "storedAt": rows[0]["storedAt"] if rows else None,
+    }
 
 
 def _system_direction_schedule(
@@ -1644,6 +2021,16 @@ def _system_direction_sample_specs(
     for month in range(1, 13):
         add(_shift_month(target_day, -month), "monthly")
 
+    # Dini bayramlar her yıl farklı güne kaydığı için aynı ay/gün örneği
+    # yeterli değildir; aynı bayram/arife gününü doğrudan eşleştiririz.
+    for year in range(1, 5):
+        holiday_match = _matching_holiday_date(
+            target_day,
+            target_day.year - year,
+        )
+        if holiday_match is not None:
+            add(holiday_match, "holiday_calendar")
+
     for year in range(1, 4):
         calendar_match = _same_month_weekday_in_year(
             target_day,
@@ -1675,8 +2062,40 @@ def _system_direction_sample_weight(
     else:
         weekday_factor = 0.68
     month_factor = 1.12 if sample_day.month == target_day.month else 1.0
+    target_calendar = _turkey_calendar_context(target_day)
+    sample_calendar = _turkey_calendar_context(sample_day)
+    if (
+        target_calendar.get("holidayKey")
+        and target_calendar.get("holidayKey") == sample_calendar.get("holidayKey")
+    ):
+        calendar_factor = 1.62
+    elif target_calendar["isHoliday"] and sample_calendar["isHoliday"]:
+        calendar_factor = 1.18
+    elif target_calendar["isHoliday"] != sample_calendar["isHoliday"]:
+        calendar_factor = 0.54
+    elif (
+        target_calendar["isEve"] == sample_calendar["isEve"]
+        and target_calendar["isEve"]
+    ):
+        calendar_factor = 1.34
+    elif (
+        target_calendar["isBridgeDay"] == sample_calendar["isBridgeDay"]
+        and target_calendar["isBridgeDay"]
+    ):
+        calendar_factor = 1.28
+    elif target_calendar["dayType"] == sample_calendar["dayType"]:
+        calendar_factor = 1.06
+    else:
+        calendar_factor = 0.92
     return round(
-        min(2.8, source_weight * recency * weekday_factor * month_factor),
+        min(
+            3.2,
+            source_weight
+            * recency
+            * weekday_factor
+            * month_factor
+            * calendar_factor,
+        ),
         4,
     )
 
@@ -2147,6 +2566,7 @@ def _direction_day_features(
         math.cos(year_angle),
         1.0 if sample_day.weekday() >= 5 else 0.0,
     ]
+    features.extend(_turkey_calendar_vector(sample_day))
 
     previous_day_rows = history_index.get(sample_day - timedelta(days=1), {})
     previous_week_rows = history_index.get(sample_day - timedelta(days=7), {})
@@ -2377,6 +2797,7 @@ def _direction_error_learning_features(
         math.sin(weekday_angle),
         math.cos(weekday_angle),
         1.0 if sample_day.weekday() >= 5 else 0.0,
+        *_turkey_calendar_vector(sample_day),
         *(normalized[category] for category in DIRECTION_CATEGORIES),
         *_direction_one_hot(predicted),
         *_direction_one_hot(previous_predicted),
@@ -2557,7 +2978,7 @@ def _cached_direction_ml_model(
         history_index,
         mode,
     )
-    cache_key = f"v1:{mode}:{target_day.isoformat()}:{signature}"
+    cache_key = f"v2-calendar:{mode}:{target_day.isoformat()}:{signature}"
     now = time.time()
     with SYSTEM_DIRECTION_MODEL_CACHE_LOCK:
         cached = SYSTEM_DIRECTION_MODEL_CACHE.get(cache_key)
@@ -2972,6 +3393,7 @@ def _system_direction_forecast(
         raise ValueError("Tahmin tarihi bugünden önce olamaz.")
     if not allow_past and target_day > today + timedelta(days=7):
         raise ValueError("Sistem yönü tahmini en fazla 7 gün ileri için hazırlanır.")
+    calendar_context = _turkey_calendar_context(target_day)
 
     forecast_mode = (
         "intraday"
@@ -2980,7 +3402,7 @@ def _system_direction_forecast(
     )
     cutoff_day = min(today, target_day - timedelta(days=1))
     cache_key = (
-        f"v4:{target_day.isoformat()}:{cutoff_day.isoformat()}:"
+        f"v5-calendar-ledger:{target_day.isoformat()}:{cutoff_day.isoformat()}:"
         f"{forecast_mode}:{current_tr.strftime('%Y%m%d%H')}"
     )
     now = time.time()
@@ -3224,6 +3646,18 @@ def _system_direction_forecast(
         calibration,
     )
     method_inputs = list(external_context.get("inputs") or [])
+    method_inputs.append(
+        {
+            "key": "calendar",
+            "label": "Tatil ve takvim etkisi",
+            "status": "ready",
+            "statusLabel": "Kullanılıyor",
+            "detail": (
+                f"{calendar_context['label']} · "
+                f"{'okul tatili yaklaşımı' if calendar_context['isSchoolBreak'] else 'öğretim dönemi yaklaşımı'}"
+            ),
+        }
+    )
     calibration_ready = calibration.get("testedDays", 0) >= 3
     method_inputs.append(
         {
@@ -3657,6 +4091,7 @@ def _system_direction_forecast(
             .isoformat()
             .replace("+00:00", "Z")
         ),
+        "calendarContext": calendar_context,
         "forecastRows": forecast_rows,
         "summary": {
             "dominantCategory": dominant_category,
@@ -3716,7 +4151,9 @@ def _system_direction_forecast(
                 "Gün öncesi ve gün içi tahminler ayrı eğitilir. Tarihsel "
                 "benzerlik; saat, hafta günü, mevsim, önceki gün/hafta gecikmeleri "
                 "ve son 7/28 günlük rejim dağılımıyla eğitilen makine öğrenmesi; "
-                "rejimin kaç saattir sürdüğünü okuyan geçiş modeliyle birlikte "
+                "resmî tatil, dini bayram, arife, köprü gün ve okul tatili "
+                "etkileriyle birlikte değerlendirilir. "
+                "Rejimin kaç saattir sürdüğünü okuyan geçiş modeliyle birlikte "
                 "performansına göre ağırlıklandırılır. KGÜP, tüketim tahmini, PTF "
                 "ve hava koşulları her iki modelde kontrollü etki yapar. Gün içi "
                 "model yalnızca o ana kadar yayımlanmış sistem yönü, YAL/YAT ve "
@@ -3815,6 +4252,41 @@ def _system_direction_forecast(
         "warnings": warnings,
         "cached": False,
     }
+    if not allow_past and target_day >= today:
+        ledger_status = _system_direction_ledger_store(payload)
+    else:
+        ledger_status = {
+            "enabled": SYSTEM_DIRECTION_LEDGER_ENABLED,
+            "status": "reconstructed",
+            "rowCount": 0,
+            "insertedRows": 0,
+        }
+    payload["forecastLedger"] = ledger_status
+    method_inputs.append(
+        {
+            "key": "forecast-ledger",
+            "label": "Tahmin kayıt defteri",
+            "status": (
+                "ready"
+                if ledger_status.get("status") == "locked"
+                else "fallback"
+            ),
+            "statusLabel": (
+                "Kilitli"
+                if ledger_status.get("status") == "locked"
+                else "Yerel kayıt"
+                if ledger_status.get("enabled")
+                else "Kapalı"
+            ),
+            "detail": (
+                f"{ledger_status.get('rowCount', 0)} saat · ilk yayın değiştirilemez"
+                if ledger_status.get("status") == "locked"
+                else "Geçmiş seçim yeniden oluşturuldu"
+                if ledger_status.get("status") == "reconstructed"
+                else "Kayıt yolu kullanılamadı"
+            ),
+        }
+    )
     with SYSTEM_DIRECTION_FORECAST_CACHE_LOCK:
         SYSTEM_DIRECTION_FORECAST_CACHE[cache_key] = {
             "payload": payload,
@@ -3941,12 +4413,51 @@ def _system_direction_validation(
     if validation_day < today - timedelta(days=30):
         raise ValueError("Tahmin doğrulaması son 30 gün için hazırlanır.")
 
-    forecast = _system_direction_forecast(
-        validation_day.isoformat(),
-        client,
-        force_refresh=force_refresh,
-        allow_past=True,
-    )
+    ledger_snapshot = _system_direction_ledger_read(validation_day)
+    if ledger_snapshot.get("available"):
+        ledger_by_hour = {
+            int(row["hour"]): row
+            for row in ledger_snapshot.get("rows", [])
+        }
+        forecast_rows = []
+        for hour in range(24):
+            recorded = ledger_by_hour.get(hour)
+            if recorded:
+                forecast_rows.append(
+                    {
+                        **recorded,
+                        "observed": False,
+                        "support": 0,
+                    }
+                )
+            else:
+                forecast_rows.append(
+                    {
+                        "hour": hour,
+                        "time": f"{hour:02}:00",
+                        "category": "missing",
+                        "label": _direction_label("missing"),
+                        "confidence": 0.0,
+                        "probabilities": {},
+                        "recorded": False,
+                    }
+                )
+        forecast = {
+            "forecastRows": forecast_rows,
+            "generatedAt": ledger_snapshot.get("generatedAt"),
+            "qualityMetrics": {},
+            "calibrationSummary": {},
+            "cached": True,
+        }
+        forecast_source = "locked_ledger"
+    else:
+        forecast = _system_direction_forecast(
+            validation_day.isoformat(),
+            client,
+            force_refresh=force_refresh,
+            allow_past=True,
+        )
+        forecast_source = "reconstructed"
     actual = _system_direction_range(
         validation_day,
         validation_day,
@@ -4033,6 +4544,12 @@ def _system_direction_validation(
     wrong_hours = max(0, compared_hours - correct_hours)
     early_transition_hours = miss_reason_counts.get("early_transition", 0)
     learning_summary = forecast.get("calibrationSummary") or {}
+    ledger_note = (
+        f" {ledger_snapshot.get('rowCount', 0)} saatlik kilitli ilk yayın kaydı kullanıldı;"
+        " sonraki model yenilemeleri geçmiş tahmini değiştirmedi."
+        if forecast_source == "locked_ledger"
+        else " Bu tarih için ilk yayın kaydı bulunmadığından tahmin geçmiş verilerle yeniden oluşturuldu."
+    )
     learning_detail = (
         " Sapma öğrenimi "
         f"{learning_summary.get('errorLearningMistakes', 0)} geçmiş hata ve "
@@ -4052,12 +4569,14 @@ def _system_direction_validation(
             + " Son doğrulanmış sapmalar sonraki tahminlerin saat ve geçiş "
             "kalibrasyonunda sınırlı ağırlıkla kullanılır."
             + learning_detail
+            + ledger_note
         )
     else:
         analysis_note = (
             "Yayımlanan saatlerde sapma yok. Doğrulanan sonuçlar sonraki "
             "tahminlerin geriye dönük kalibrasyonuna eklenir."
             + learning_detail
+            + ledger_note
         )
     return {
         "date": validation_day.isoformat(),
@@ -4068,6 +4587,14 @@ def _system_direction_validation(
             .replace("+00:00", "Z")
         ),
         "forecastGeneratedAt": forecast.get("generatedAt"),
+        "forecastSource": forecast_source,
+        "forecastLedger": {
+            "available": bool(ledger_snapshot.get("available")),
+            "recordedHours": int(ledger_snapshot.get("rowCount") or 0),
+            "firstPublicationProtected": bool(
+                ledger_snapshot.get("available")
+            ),
+        },
         "rows": rows,
         "qualityMetrics": forecast.get("qualityMetrics") or {},
         "summary": {
@@ -4078,6 +4605,9 @@ def _system_direction_validation(
             "correctHours": correct_hours,
             "wrongHours": wrong_hours,
             "missingHours": max(0, 24 - len(actual_by_hour)),
+            "recordedForecastHours": int(
+                ledger_snapshot.get("rowCount") or 0
+            ),
             "accuracy": accuracy,
         },
         "note": analysis_note,
