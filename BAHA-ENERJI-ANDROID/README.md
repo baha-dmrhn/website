@@ -1,8 +1,9 @@
 # Baha Enerji Android APK
 
 Bu klasör, Baha Enerji web panelini Android telefonda uygulama olarak açan APK projesidir.
-Web sitesiyle aynı veri ve ekran içeriklerini kullanır; APK içinde web menüleri yerine
-yerel Android üst çubuğu, uygulama menüsü ve beş bölümlü alt gezinme çubuğu gösterilir.
+Web sitesiyle aynı veri ve ekran içeriklerini kullanır. APK içinde yerel Android üst
+çubuğu bulunur; ana bölümler sağ üstteki uygulama menüsünden açılır. Alt gezinme
+çubuğu kullanılmadığı için grafikler ve sayfa içeriği ekranın altına kadar genişler.
 
 ## Site adresi
 
