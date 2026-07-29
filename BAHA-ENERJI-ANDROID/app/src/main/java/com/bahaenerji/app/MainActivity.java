@@ -16,6 +16,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -47,6 +49,7 @@ import java.util.Deque;
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 1107;
     private static final String APP_USER_AGENT = "BahaEnerjiAndroid/2.0";
+    private static final long STARTUP_TIMEOUT_MS = 60000;
     private static final String[] TAB_PATHS = {
             "/piyasa/",
             "/baraj/",
@@ -83,6 +86,14 @@ public class MainActivity extends Activity {
     private final Deque<Integer> tabHistory = new ArrayDeque<>();
     private String currentPath = "/";
     private long lastBackPressedAt;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable startupTimeout = () -> {
+        if (splashView != null && splashView.getVisibility() == View.VISIBLE) {
+            showError();
+        }
+    };
+    private int unexpectedStartupPages;
+    private boolean startupLoading;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -129,11 +140,33 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 String title = view.getTitle();
                 if (title == null || !title.toLowerCase().contains("baha")) {
+                    if (startupLoading && unexpectedStartupPages < 3) {
+                        unexpectedStartupPages += 1;
+                        view.postDelayed(
+                                () -> {
+                                    if (startupLoading) {
+                                        view.loadUrl(
+                                                appUrl(
+                                                        "/panel-hazirlaniyor?next=/login"
+                                                )
+                                        );
+                                    }
+                                },
+                                1800L * unexpectedStartupPages
+                        );
+                        return;
+                    }
+                    if (startupLoading) {
+                        showError();
+                        return;
+                    }
                     progressBar.setVisibility(View.VISIBLE);
                     splashView.setVisibility(View.VISIBLE);
                     webView.setVisibility(View.INVISIBLE);
                     return;
                 }
+                startupLoading = false;
+                mainHandler.removeCallbacks(startupTimeout);
                 updateNativeChrome(url);
                 syncNativeTheme();
                 progressBar.setVisibility(View.GONE);
@@ -594,6 +627,10 @@ public class MainActivity extends Activity {
             showError();
             return;
         }
+        startupLoading = true;
+        unexpectedStartupPages = 0;
+        mainHandler.removeCallbacks(startupTimeout);
+        mainHandler.postDelayed(startupTimeout, STARTUP_TIMEOUT_MS);
         progressBar.setVisibility(View.VISIBLE);
         splashView.setVisibility(View.VISIBLE);
         errorView.setVisibility(View.GONE);
@@ -602,6 +639,8 @@ public class MainActivity extends Activity {
     }
 
     private void showError() {
+        startupLoading = false;
+        mainHandler.removeCallbacks(startupTimeout);
         progressBar.setVisibility(View.GONE);
         splashView.setVisibility(View.GONE);
         webView.setVisibility(View.GONE);
@@ -676,5 +715,15 @@ public class MainActivity extends Activity {
         Uri[] results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
         filePathCallback.onReceiveValue(results);
         filePathCallback = null;
+    }
+
+    @Override
+    protected void onDestroy() {
+        mainHandler.removeCallbacksAndMessages(null);
+        if (webView != null) {
+            webView.stopLoading();
+            webView.destroy();
+        }
+        super.onDestroy();
     }
 }
