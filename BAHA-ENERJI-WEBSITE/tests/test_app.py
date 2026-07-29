@@ -354,6 +354,8 @@ class SuiteHelpersTests(unittest.TestCase):
             ],
             0,
         )
+        self.assertIn("learning", forecast["modelSummary"]["averageWeights"])
+        self.assertIn("errorLearning", forecast["modelSummary"])
         self.assertIn("last7", forecast["qualityMetrics"]["windows"])
         self.assertEqual(len(forecast["qualityMetrics"]["hours"]), 24)
         bucket_labels = [
@@ -704,6 +706,62 @@ class SuiteHelpersTests(unittest.TestCase):
         self.assertTrue(details[3]["applied"])
         self.assertTrue(details[3]["changedDirection"])
         self.assertGreater(details[3]["transitionBlend"], 0)
+
+    def test_error_learning_ml_learns_repeated_hourly_mistakes(self):
+        target_day = date(2026, 7, 29)
+        records = []
+        for days_ago in range(30, 0, -1):
+            sample_day = target_day - timedelta(days=days_ago)
+            for hour in range(24):
+                predicted = "surplus"
+                actual = "deficit" if hour in {3, 4} else "surplus"
+                records.append(
+                    {
+                        "sampleDay": sample_day,
+                        "date": sample_day.isoformat(),
+                        "hour": hour,
+                        "predicted": predicted,
+                        "previousPredicted": predicted,
+                        "actual": actual,
+                        "probabilities": {
+                            "deficit": 0.18,
+                            "surplus": 0.74,
+                            "balanced": 0.08,
+                        },
+                        "correct": predicted == actual,
+                    }
+                )
+
+        model = APP._system_direction_error_learning_model(
+            target_day,
+            {"records": records},
+        )
+        mistake_hour = APP._softmax_direction_probabilities(
+            model,
+            APP._direction_error_learning_features(
+                target_day,
+                3,
+                {"deficit": 0.18, "surplus": 0.74, "balanced": 0.08},
+                "surplus",
+                "surplus",
+            ),
+        )
+        normal_hour = APP._softmax_direction_probabilities(
+            model,
+            APP._direction_error_learning_features(
+                target_day,
+                12,
+                {"deficit": 0.18, "surplus": 0.74, "balanced": 0.08},
+                "surplus",
+                "surplus",
+            ),
+        )
+
+        self.assertTrue(model["available"])
+        self.assertEqual(model["mistakeCount"], 60)
+        self.assertGreater(model["validationAccuracy"], 80)
+        self.assertGreater(mistake_hour["deficit"], mistake_hour["surplus"])
+        self.assertGreater(normal_hour["surplus"], normal_hour["deficit"])
 
     def test_system_direction_miss_reason_detects_delayed_regime_change(self):
         forecast = {
@@ -2933,7 +2991,7 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn('href="/module-suite.css?v=47"', html)
         self.assertIn('href="/system-direction-forecast.css?v=16"', html)
         self.assertIn('src="/module-suite.js?v=12"', html)
-        self.assertIn('src="/system-direction-forecast.js?v=11"', html)
+        self.assertIn('src="/system-direction-forecast.js?v=12"', html)
         self.assertIn('class="suite-footer" data-suite-footer="sistem"', html)
         self.assertIn('id="suiteFooterUpdated"', html)
         self.assertNotIn('class="system-header-actions"', html)
@@ -2956,6 +3014,7 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn("await loadValidation(force)", script)
         self.assertIn("contextTooltip", script)
         self.assertIn("contextInputs", script)
+        self.assertIn('["Sapma ML", weights.learning]', script)
         self.assertEqual(headers.get_content_type(), "text/javascript")
 
         status, content, headers = self.get(
