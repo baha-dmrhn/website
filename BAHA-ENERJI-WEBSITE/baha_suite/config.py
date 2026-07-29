@@ -8,7 +8,7 @@ ASSET_VERSIONS: dict[str, int] = {
     "/piyasa/app.js": 58,
     "/piyasa/styles.css": 37,
     "/piyasa-charts.js": 19,
-    "/portal-shell.css": 6,
+    "/portal-shell.css": 7,
     "/chart-fullscreen.css": 5,
     "/chart-fullscreen.js": 5,
     "/suite-loading.js": 1,
