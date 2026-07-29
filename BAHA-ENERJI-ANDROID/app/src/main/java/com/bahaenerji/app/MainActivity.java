@@ -54,13 +54,12 @@ public class MainActivity extends Activity {
             "/tuketim/",
             "/sistem-yonu-tahmini/"
     };
-    private static final String[] TAB_ICONS = {"₺", "≈", "↕", "⚡", "⌁"};
     private static final String[] TAB_LABELS = {
             "Piyasa",
-            "Baraj",
-            "Üretim",
+            "Baraj Aktif",
+            "UEVM · UEÇM",
             "Tüketim",
-            "Tahmin"
+            "Sistem Yönü Tahmini"
     };
 
     private WebView webView;
@@ -69,7 +68,6 @@ public class MainActivity extends Activity {
     private LinearLayout appBar;
     private LinearLayout splashView;
     private LinearLayout errorView;
-    private LinearLayout bottomNavigation;
     private TextView appBrandTitle;
     private TextView appSectionTitle;
     private TextView appMenuButton;
@@ -78,7 +76,6 @@ public class MainActivity extends Activity {
     private TextView errorTitle;
     private TextView errorMessage;
     private Button retryButton;
-    private TextView[] navigationItems;
     private ValueCallback<Uri[]> filePathCallback;
     private String appHost;
     private boolean nativeDarkTheme;
@@ -258,13 +255,6 @@ public class MainActivity extends Activity {
         progressParams.gravity = Gravity.TOP;
         webContainer.addView(progressBar, progressParams);
 
-        bottomNavigation = buildBottomNavigation();
-        bottomNavigation.setVisibility(View.GONE);
-        appLayout.addView(bottomNavigation, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(72)
-        ));
-
         errorView = new LinearLayout(this);
         errorView.setOrientation(LinearLayout.VERTICAL);
         errorView.setGravity(Gravity.CENTER);
@@ -389,45 +379,26 @@ public class MainActivity extends Activity {
         return appBar;
     }
 
-    private LinearLayout buildBottomNavigation() {
-        LinearLayout navigation = new LinearLayout(this);
-        navigation.setOrientation(LinearLayout.HORIZONTAL);
-        navigation.setGravity(Gravity.CENTER);
-        navigation.setPadding(dp(6), dp(6), dp(6), dp(6));
-        navigation.setElevation(dp(14));
-        navigationItems = new TextView[TAB_PATHS.length];
-
-        for (int index = 0; index < TAB_PATHS.length; index++) {
-            final int tabIndex = index;
-            TextView item = new TextView(this);
-            item.setText(TAB_ICONS[index] + "\n" + TAB_LABELS[index]);
-            item.setTextSize(10);
-            item.setGravity(Gravity.CENTER);
-            item.setLines(2);
-            item.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            item.setContentDescription(TAB_LABELS[index] + " bölümünü aç");
-            item.setOnClickListener(view -> navigateToTab(tabIndex));
-            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(
-                    0,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    1
-            );
-            itemParams.setMargins(dp(2), 0, dp(2), 0);
-            navigation.addView(item, itemParams);
-            navigationItems[index] = item;
-        }
-        return navigation;
-    }
-
     private void showAppMenu(View anchor) {
         PopupMenu popup = new PopupMenu(this, anchor);
-        popup.getMenu().add(0, 1, 0, "Sayfayı yenile");
-        popup.getMenu().add(0, 2, 1, "Temayı değiştir");
-        popup.getMenu().add(0, 3, 2, "TV modu");
-        popup.getMenu().add(0, 4, 3, "Günlük rapor");
-        popup.getMenu().add(0, 5, 4, "EPİAŞ koruma");
-        popup.getMenu().add(0, 6, 5, "Oturumu kapat");
+        for (int index = 0; index < TAB_LABELS.length; index++) {
+            popup.getMenu().add(10, 100 + index, index, TAB_LABELS[index]);
+        }
+        popup.getMenu().setGroupCheckable(10, true, true);
+        if (selectedTabIndex >= 0 && selectedTabIndex < TAB_LABELS.length) {
+            popup.getMenu().findItem(100 + selectedTabIndex).setChecked(true);
+        }
+        popup.getMenu().add(0, 1, 10, "Sayfayı yenile");
+        popup.getMenu().add(0, 2, 11, "Temayı değiştir");
+        popup.getMenu().add(0, 3, 12, "TV modu");
+        popup.getMenu().add(0, 4, 13, "Günlük rapor");
+        popup.getMenu().add(0, 5, 14, "EPİAŞ koruma");
+        popup.getMenu().add(0, 6, 15, "Oturumu kapat");
         popup.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() >= 100 && item.getItemId() < 100 + TAB_PATHS.length) {
+                navigateToTab(item.getItemId() - 100);
+                return true;
+            }
             switch (item.getItemId()) {
                 case 1:
                     webView.reload();
@@ -486,28 +457,22 @@ public class MainActivity extends Activity {
         currentPath = path;
         selectedTabIndex = -1;
         String title = "Baha Enerji";
-        boolean showNavigation = false;
 
         if (path.startsWith("/piyasa")) {
             title = "Piyasa";
             selectedTabIndex = 0;
-            showNavigation = true;
         } else if (path.startsWith("/baraj")) {
             title = "Baraj Aktif";
             selectedTabIndex = 1;
-            showNavigation = true;
         } else if (path.startsWith("/uretim")) {
             title = "Üretim";
             selectedTabIndex = 2;
-            showNavigation = true;
         } else if (path.startsWith("/tuketim")) {
             title = "Tüketim";
             selectedTabIndex = 3;
-            showNavigation = true;
         } else if (path.startsWith("/sistem-yonu-tahmini")) {
             title = "Sistem Yönü Tahmini";
             selectedTabIndex = 4;
-            showNavigation = true;
         } else if (path.startsWith("/login")) {
             title = "Güvenli Giriş";
             tabHistory.clear();
@@ -516,18 +481,13 @@ public class MainActivity extends Activity {
             tabHistory.clear();
         } else if (path.startsWith("/tv")) {
             title = "Komuta Merkezi";
-            showNavigation = true;
         } else if (path.startsWith("/rapor")) {
             title = "Günlük Rapor";
-            showNavigation = true;
         } else if (path.startsWith("/epias-koruma")) {
             title = "EPİAŞ Koruma";
-            showNavigation = true;
         }
 
         appSectionTitle.setText(title);
-        bottomNavigation.setVisibility(showNavigation ? View.VISIBLE : View.GONE);
-        updateNavigationSelection();
     }
 
     private void syncNativeTheme() {
@@ -581,9 +541,6 @@ public class MainActivity extends Activity {
                     )
             );
         }
-        if (bottomNavigation != null) {
-            bottomNavigation.setBackgroundColor(navigationBackground);
-        }
         if (errorView != null) errorView.setBackgroundColor(pageBackground);
         if (errorTitle != null) errorTitle.setTextColor(primaryText);
         if (errorMessage != null) errorMessage.setTextColor(secondaryText);
@@ -618,29 +575,6 @@ public class MainActivity extends Activity {
             }
         }
         getWindow().getDecorView().setSystemUiVisibility(systemUi);
-        updateNavigationSelection();
-    }
-
-    private void updateNavigationSelection() {
-        if (navigationItems == null) return;
-        int idleColor = nativeDarkTheme
-                ? Color.rgb(157, 176, 205)
-                : Color.rgb(104, 122, 150);
-        int idleBackground = Color.TRANSPARENT;
-        int selectedBackground = nativeDarkTheme
-                ? Color.rgb(26, 54, 94)
-                : Color.rgb(231, 239, 255);
-        for (int index = 0; index < navigationItems.length; index++) {
-            boolean selected = index == selectedTabIndex;
-            TextView item = navigationItems[index];
-            item.setTextColor(selected ? Color.rgb(47, 112, 238) : idleColor);
-            item.setBackground(
-                    roundedBackground(
-                            selected ? selectedBackground : idleBackground,
-                            13
-                    )
-            );
-        }
     }
 
     private GradientDrawable roundedBackground(int color, int radiusDp) {
