@@ -1,4 +1,4 @@
-﻿import importlib.util
+import importlib.util
 import http.client
 import gzip
 import json
@@ -2690,7 +2690,7 @@ class SuiteHttpTests(unittest.TestCase):
             ["192x192", "512x512"],
         )
         self.assertIn('id="barajFooterUpdated"', html)
-        self.assertIn('href="/portal-shell.css?v=6"', html)
+        self.assertIn('href="/portal-shell.css?v=7"', html)
         self.assertIn('class="suite-command-toggle"', html)
         self.assertIn('class="suite-command-menu"', html)
         self.assertIn('src="/command-center.js?v=2"', html)
