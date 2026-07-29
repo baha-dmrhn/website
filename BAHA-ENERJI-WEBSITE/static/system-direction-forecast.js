@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+let activeHistoricalDate = "";
 
 const LABELS = {
   deficit: "Enerji Açığı",
@@ -26,6 +27,13 @@ function isoToday() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60_000;
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function isoDaysAgo(days) {
+  const target = new Date();
+  target.setDate(target.getDate() - Number(days || 0));
+  const offset = target.getTimezoneOffset() * 60_000;
+  return new Date(target.getTime() - offset).toISOString().slice(0, 10);
 }
 
 function fmtNumber(value, digits = 1) {
@@ -382,6 +390,14 @@ function renderValidation(data) {
   );
   setText("validationMissing", `${Number(summary.missingHours || 0)} saat`);
   setText("validationNote", data.note || "Tahmin, gerçek EPİAŞ sistem yönüyle saat saat kıyaslanır.");
+  if (activeHistoricalDate) {
+    setText(
+      "historicalForecastHint",
+      data.forecastSource === "locked_ledger"
+        ? `${Number(data.forecastLedger?.recordedHours || 0)} saatlik ilk yayın kaydı gerçek değerlerle karşılaştırılıyor.`
+        : "Tahmin yalnızca seçilen tarihten önceki verilerle yeniden kuruldu; gerçek değer sonradan karşılaştırıldı.",
+    );
+  }
   renderQualityMetrics(data.qualityMetrics || {});
   renderValidationDirection(rows);
 
@@ -430,7 +446,12 @@ function renderForecast(data) {
     observedLegend.hidden = Number(summary.observedHours || 0) === 0;
   }
   setText("timelineTitle", schedule.headline || `${data.targetLabel || "Seçili gün"} sistem yönü zaman şeridi`);
-  setText("validationTitle", "Bugünkü tahmin gerçekleşenle tuttu mu?");
+  setText(
+    "validationTitle",
+    activeHistoricalDate
+      ? `${fmtDate(activeHistoricalDate)} tahmini gerçekleşenle tuttu mu?`
+      : "Bugünkü tahmin gerçekleşenle tuttu mu?",
+  );
   setText("dominantDirection", summary.dominantLabel || "—");
   setText(
     "dominantDetail",
@@ -457,13 +478,22 @@ function renderForecast(data) {
 
 async function loadForecast(force = false) {
   const button = $("forecastRefresh");
+  const historyButton = $("historicalForecastRun");
   if (button) {
     button.disabled = true;
     button.textContent = "Tahmin hazırlanıyor…";
   }
+  if (historyButton) historyButton.disabled = true;
   showError("");
   try {
-    const response = await fetch(`/sistem-yonu-tahmini/api/forecast${force ? "?refresh=1" : ""}`, {
+    const params = new URLSearchParams();
+    if (force) params.set("refresh", "1");
+    if (activeHistoricalDate) {
+      params.set("date", activeHistoricalDate);
+      params.set("historical", "1");
+    }
+    const query = params.toString();
+    const response = await fetch(`/sistem-yonu-tahmini/api/forecast${query ? `?${query}` : ""}`, {
       headers: { Accept: "application/json" },
       credentials: "include",
     });
@@ -475,9 +505,11 @@ async function loadForecast(force = false) {
     if (!response.ok) throw new Error(payload.error || "Tahmin alınamadı.");
     renderForecast(payload);
     const validationDate = $("validationDate");
-    if (validationDate && payload.schedule?.validationDate) {
-      validationDate.value = payload.schedule.validationDate;
+    if (validationDate) {
+      validationDate.value = activeHistoricalDate || payload.schedule?.validationDate || isoToday();
     }
+    const liveButton = $("historicalForecastLive");
+    if (liveButton) liveButton.hidden = !activeHistoricalDate;
     await loadValidation(force);
   } catch (error) {
     showError(error.message || "Sistem yönü tahmini hazırlanamadı.");
@@ -488,6 +520,7 @@ async function loadForecast(force = false) {
       button.disabled = false;
       button.textContent = "↻ Tahmini yenile";
     }
+    if (historyButton) historyButton.disabled = false;
   }
 }
 
@@ -540,9 +573,41 @@ document.addEventListener("DOMContentLoaded", () => {
   const validationDate = $("validationDate");
   if (validationDate) {
     validationDate.max = isoToday();
+    validationDate.min = isoDaysAgo(365);
     validationDate.value = validationDate.value || isoToday();
     validationDate.addEventListener("change", () => loadValidation(false));
   }
+  const historicalDate = $("historicalForecastDate");
+  if (historicalDate) {
+    historicalDate.max = isoToday();
+    historicalDate.min = isoDaysAgo(365);
+    historicalDate.value = isoToday();
+  }
+  $("historicalForecastRun")?.addEventListener("click", () => {
+    const selectedDate = historicalDate?.value || "";
+    if (!selectedDate) {
+      showError("İncelemek için geçmiş bir tarih seçin.");
+      return;
+    }
+    if (selectedDate > isoToday()) {
+      showError("Geçmiş tahmin testinde bugünden ileri tarih seçilemez.");
+      return;
+    }
+    activeHistoricalDate = selectedDate;
+    setText(
+      "historicalForecastHint",
+      "Model seçilen günün gerçek yönünü görmeden, yalnızca önceki verilerle tahmin hazırlıyor…",
+    );
+    loadForecast(false);
+  });
+  $("historicalForecastLive")?.addEventListener("click", () => {
+    activeHistoricalDate = "";
+    setText(
+      "historicalForecastHint",
+      "Gerçek değer tahmin tamamlandıktan sonra karşılaştırılır.",
+    );
+    loadForecast(false);
+  });
   $("forecastRefresh")?.addEventListener("click", () => loadForecast(true));
   $("validationRefresh")?.addEventListener("click", () => loadValidation(true));
   $("validationHourPrev")?.addEventListener("click", () => moveValidationHours(-1));
