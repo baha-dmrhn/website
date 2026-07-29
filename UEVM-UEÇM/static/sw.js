@@ -1,4 +1,4 @@
-const CACHE_NAME = "baha-enerji-shell-v16";
+const CACHE_NAME = "baha-enerji-shell-v17";
 const NAVIGATION_TIMEOUT_MS = 1000;
 const PRE_LOGIN_LOADING_PATHS = new Set(["/", "/login", "/login/"]);
 const STATIC_ASSETS = [
@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
   "/login.js",
   "/suite-loading.js",
   "/panel-hazirlaniyor",
-  "/panel-loading.js",
+  "/panel-loading.js?v=2",
   "/manifest.webmanifest",
   "/suite-assets/baha-logo.png",
   "/suite-assets/icon-192.png",
@@ -20,7 +20,10 @@ function loadingFallback() {
 }
 
 function shouldUseLoadingFallback(url) {
-  return PRE_LOGIN_LOADING_PATHS.has(url.pathname);
+  return (
+    !url.searchParams.has("baha_ready")
+    && PRE_LOGIN_LOADING_PATHS.has(url.pathname)
+  );
 }
 
 self.addEventListener("install", (event) => {
@@ -51,6 +54,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (url.pathname === "/health") return;
 
   if (event.request.mode === "navigate") {
     const useLoadingFallback = shouldUseLoadingFallback(url);
