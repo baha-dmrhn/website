@@ -1841,6 +1841,7 @@ def _system_direction_backtest_calibration(
 
         predicted_by_hour: dict[int, str] = {}
         confidence_by_hour: dict[int, float] = {}
+        probabilities_by_hour: dict[int, dict[str, float]] = {}
         for hour in range(24):
             scores = {category: 0.0 for category in DIRECTION_CATEGORIES}
             support = 0
@@ -1876,10 +1877,15 @@ def _system_direction_backtest_calibration(
                     if neighbor_category in DIRECTION_CATEGORIES:
                         scores[neighbor_category] += weight * 0.08
             if support >= 7 and sum(scores.values()) > 0:
+                score_total = sum(scores.values())
                 predicted = max(scores, key=scores.get)
                 predicted_by_hour[hour] = predicted
+                probabilities_by_hour[hour] = {
+                    category: scores[category] / score_total
+                    for category in DIRECTION_CATEGORIES
+                }
                 confidence_by_hour[hour] = round(
-                    scores[predicted] / sum(scores.values()) * 100,
+                    scores[predicted] / score_total * 100,
                     2,
                 )
 
@@ -1909,7 +1915,9 @@ def _system_direction_backtest_calibration(
                     "date": validation_day.isoformat(),
                     "hour": hour,
                     "predicted": predicted_category,
+                    "previousPredicted": predicted_by_hour.get(hour - 1),
                     "actual": actual_category,
+                    "probabilities": probabilities_by_hour.get(hour, {}),
                     "confidence": confidence_by_hour.get(hour),
                     "correct": predicted_category == actual_category,
                 }
@@ -1947,6 +1955,7 @@ def _system_direction_backtest_calibration(
             test_records,
             target_day,
         ),
+        "records": test_records,
         "confusion": confusion,
         "transitionHolds": transition_holds,
     }
@@ -2223,9 +2232,12 @@ def _direction_day_features(
 def _softmax_direction_model(
     features: list[list[float]],
     labels: list[str],
+    sample_importance: list[float] | None = None,
 ) -> dict[str, Any]:
     """Train a small regularized multinomial model with chronological holdout."""
 
+    if sample_importance is not None and len(sample_importance) != len(features):
+        raise ValueError("Örnek ağırlığı sayısı eğitim örneği sayısıyla eşleşmiyor.")
     if np is None or len(features) < 120 or len(set(labels)) < 2:
         return {
             "available": False,
@@ -2240,6 +2252,12 @@ def _softmax_direction_model(
     split = max(96, min(len(features) - 24, int(len(features) * 0.82)))
     train_x, validation_x = matrix[:split], matrix[split:]
     train_y, validation_y = targets[:split], targets[split:]
+    importance = (
+        np.asarray(sample_importance, dtype=np.float64)
+        if sample_importance is not None
+        else np.ones(len(features), dtype=np.float64)
+    )
+    train_importance = np.clip(importance[:split], 0.25, 4.0)
     mean = train_x.mean(axis=0)
     scale = train_x.std(axis=0)
     scale[scale < 1e-7] = 1.0
@@ -2264,7 +2282,7 @@ def _softmax_direction_model(
         len(train_y) / np.maximum(1.0, len(DIRECTION_CATEGORIES) * class_counts)
     )
     class_weights = np.clip(class_weights, 0.65, 2.4)
-    sample_weights = class_weights[train_y]
+    sample_weights = class_weights[train_y] * train_importance
     sample_weight_total = sample_weights.sum()
 
     for epoch in range(180):
@@ -2318,6 +2336,141 @@ def _softmax_direction_probabilities(
         category: float(probabilities[index])
         for index, category in enumerate(DIRECTION_CATEGORIES)
     }
+
+
+def _direction_error_learning_features(
+    sample_day: date,
+    hour: int,
+    probabilities: dict[str, Any],
+    predicted: str | None,
+    previous_predicted: str | None,
+) -> list[float]:
+    """Describe a model decision so a second model can learn its error pattern."""
+
+    normalized = {
+        category: max(0.0, float(probabilities.get(category, 0.0) or 0.0))
+        for category in DIRECTION_CATEGORIES
+    }
+    probability_total = sum(normalized.values())
+    if probability_total <= 0 and predicted in DIRECTION_CATEGORIES:
+        normalized = {
+            category: 0.76 if category == predicted else 0.12
+            for category in DIRECTION_CATEGORIES
+        }
+        probability_total = 1.0
+    if probability_total > 0:
+        normalized = {
+            category: value / probability_total
+            for category, value in normalized.items()
+        }
+    if predicted not in DIRECTION_CATEGORIES and probability_total > 0:
+        predicted = max(normalized, key=normalized.get)
+
+    ranked = sorted(normalized.values(), reverse=True)
+    confidence = ranked[0] if ranked else 0.0
+    margin = ranked[0] - ranked[1] if len(ranked) >= 2 else confidence
+    hour_angle = 2 * math.pi * hour / 24
+    weekday_angle = 2 * math.pi * sample_day.weekday() / 7
+    return [
+        math.sin(hour_angle),
+        math.cos(hour_angle),
+        math.sin(weekday_angle),
+        math.cos(weekday_angle),
+        1.0 if sample_day.weekday() >= 5 else 0.0,
+        *(normalized[category] for category in DIRECTION_CATEGORIES),
+        *_direction_one_hot(predicted),
+        *_direction_one_hot(previous_predicted),
+        confidence,
+        margin,
+        1.0
+        if (
+            predicted in DIRECTION_CATEGORIES
+            and previous_predicted in DIRECTION_CATEGORIES
+            and predicted != previous_predicted
+        )
+        else 0.0,
+    ]
+
+
+def _system_direction_error_learning_model(
+    target_day: date,
+    calibration: dict[str, Any],
+) -> dict[str, Any]:
+    """Train a leakage-safe meta-model from recent walk-forward mistakes.
+
+    The base prediction for each historical day was produced only from days
+    before that day. Wrong decisions receive more training weight, allowing
+    repeated hour and transition errors to influence future forecasts without
+    exposing the target day's actual system direction to the model.
+    """
+
+    training_rows: list[tuple[date, dict[str, Any]]] = []
+    for row in calibration.get("records") or []:
+        sample_day = row.get("sampleDay")
+        if isinstance(sample_day, str):
+            try:
+                sample_day = date.fromisoformat(sample_day)
+            except ValueError:
+                continue
+        if not isinstance(sample_day, date) or sample_day >= target_day:
+            continue
+        predicted = row.get("predicted")
+        actual = row.get("actual")
+        if (
+            predicted not in DIRECTION_CATEGORIES
+            or actual not in DIRECTION_CATEGORIES
+        ):
+            continue
+        training_rows.append((sample_day, row))
+    training_rows.sort(key=lambda item: (item[0], int(item[1].get("hour", 0))))
+
+    mistake_count = sum(
+        1 for _, row in training_rows if row.get("predicted") != row.get("actual")
+    )
+    if len(training_rows) < 120 or mistake_count < 8:
+        return {
+            "available": False,
+            "reason": "Sapma öğrenimi için yeterli doğrulanmış hata yok.",
+            "sampleCount": len(training_rows),
+            "mistakeCount": mistake_count,
+            "correctCount": len(training_rows) - mistake_count,
+        }
+
+    features: list[list[float]] = []
+    labels: list[str] = []
+    importance: list[float] = []
+    for sample_day, row in training_rows:
+        predicted = str(row.get("predicted"))
+        actual = str(row.get("actual"))
+        features.append(
+            _direction_error_learning_features(
+                sample_day,
+                int(row.get("hour", 0)),
+                row.get("probabilities") or {},
+                predicted,
+                row.get("previousPredicted"),
+            )
+        )
+        labels.append(actual)
+        # The model still sees correct decisions, but recurrent mistakes carry
+        # more gradient so they are not drowned out by the majority class.
+        importance.append(2.1 if predicted != actual else 0.9)
+
+    model = _softmax_direction_model(
+        features,
+        labels,
+        sample_importance=importance,
+    )
+    model.update(
+        {
+            "sampleCount": len(training_rows),
+            "mistakeCount": mistake_count,
+            "correctCount": len(training_rows) - mistake_count,
+            "trainedThrough": training_rows[-1][0].isoformat(),
+            "mistakeWeight": 2.1,
+        }
+    )
+    return model
 
 
 def _direction_ml_training_data(
@@ -2649,9 +2802,11 @@ def _system_direction_ensemble_weights(
     ml_accuracy: float | None,
     transition_accuracy: float | None,
     *,
+    learning_accuracy: float | None = None,
     history_available: bool = True,
     ml_available: bool = True,
     transition_available: bool = True,
+    learning_available: bool = False,
     operational_available: bool = False,
 ) -> dict[str, float]:
     raw = {
@@ -2671,6 +2826,14 @@ def _system_direction_ensemble_weights(
                 ((transition_accuracy or 50.0) / 100) ** 2 * 0.82,
             )
             if transition_available
+            else 0.0
+        ),
+        "learning": (
+            max(
+                0.12,
+                ((learning_accuracy or 50.0) / 100) ** 2 * 0.72,
+            )
+            if learning_available
             else 0.0
         ),
         "operational": 0.16 if operational_available else 0.0,
@@ -3044,12 +3207,20 @@ def _system_direction_forecast(
             operational_hours.append(row_hour)
     operational_cutoff = max(operational_hours, default=-1)
 
+    error_learning_scores = {
+        hour: dict(smoothed_scores[hour])
+        for hour in range(24)
+    }
     calibration = _system_direction_backtest_calibration(
         target_day,
         calibration_history,
     )
     smoothed_scores, calibration_by_hour = _apply_system_direction_calibration(
         smoothed_scores,
+        calibration,
+    )
+    error_learning_model = _system_direction_error_learning_model(
+        target_day,
         calibration,
     )
     method_inputs = list(external_context.get("inputs") or [])
@@ -3064,6 +3235,27 @@ def _system_direction_forecast(
                 f"{calibration.get('testedHours', 0)} saat geriye dönük test"
                 if calibration_ready
                 else "Yeterli doğrulanmış gün bekleniyor"
+            ),
+        }
+    )
+    method_inputs.append(
+        {
+            "key": "error-learning",
+            "label": "Sapmalardan öğrenen ML",
+            "status": (
+                "ready"
+                if error_learning_model.get("available")
+                else "fallback"
+            ),
+            "detail": (
+                f"{error_learning_model.get('mistakeCount', 0)} sapma · "
+                f"{error_learning_model.get('sampleCount', 0)} doğrulanmış saat · "
+                f"%{error_learning_model.get('validationAccuracy', 0)} doğrulama"
+                if error_learning_model.get("available")
+                else (
+                    f"{error_learning_model.get('mistakeCount', 0)} sapma bulundu; "
+                    "güvenli eğitim eşiği bekleniyor"
+                )
             ),
         }
     )
@@ -3163,10 +3355,30 @@ def _system_direction_forecast(
     forecast_rows: list[dict[str, Any]] = []
     predicted_counts = {category: 0 for category in DIRECTION_CATEGORIES}
     confidence_values: list[float] = []
+    error_learning_base_probabilities: dict[int, dict[str, float]] = {}
+    error_learning_base_predictions: dict[int, str] = {}
+    for hour in range(24):
+        base_scores = error_learning_scores[hour]
+        base_total = sum(base_scores.values())
+        base_probabilities = {
+            category: (
+                base_scores[category] / base_total
+                if base_total > 0
+                else 0.0
+            )
+            for category in DIRECTION_CATEGORIES
+        }
+        error_learning_base_probabilities[hour] = base_probabilities
+        error_learning_base_predictions[hour] = (
+            max(base_probabilities, key=base_probabilities.get)
+            if base_total > 0
+            else "missing"
+        )
     ensemble_weight_totals = {
         "history": 0.0,
         "ml": 0.0,
         "transition": 0.0,
+        "learning": 0.0,
         "operational": 0.0,
     }
     ensemble_weight_hours = 0
@@ -3220,6 +3432,20 @@ def _system_direction_forecast(
             hour,
             {label: 0.0 for label in DIRECTION_CATEGORIES},
         )
+        error_learning_probabilities = (
+            _softmax_direction_probabilities(
+                error_learning_model,
+                _direction_error_learning_features(
+                    target_day,
+                    hour,
+                    error_learning_base_probabilities[hour],
+                    error_learning_base_predictions[hour],
+                    error_learning_base_predictions.get(hour - 1),
+                ),
+            )
+            if error_learning_model.get("available") and not observed
+            else {label: 0.0 for label in DIRECTION_CATEGORIES}
+        )
         operational_probabilities = (
             _system_direction_operational_probabilities(
                 operational_rows,
@@ -3245,6 +3471,7 @@ def _system_direction_forecast(
                 "history": 0.0,
                 "ml": 0.0,
                 "transition": 0.0,
+                "learning": 0.0,
                 "operational": 0.0,
             }
             confidence = 100.0
@@ -3253,10 +3480,16 @@ def _system_direction_forecast(
                 calibration.get("accuracy"),
                 selected_ml_model.get("validationAccuracy"),
                 transition_model.get("accuracy"),
+                learning_accuracy=error_learning_model.get(
+                    "validationAccuracy"
+                ),
                 history_available=historical_total > 0,
                 ml_available=bool(selected_ml_model.get("available")),
                 transition_available=bool(
                     transition_model.get("testedHours")
+                ),
+                learning_available=bool(
+                    error_learning_model.get("available")
                 ),
                 operational_available=(
                     operational_probabilities is not None
@@ -3267,6 +3500,7 @@ def _system_direction_forecast(
                     historical_probabilities[label] * weights["history"]
                     + ml_probabilities[label] * weights["ml"]
                     + regime_probabilities[label] * weights["transition"]
+                    + error_learning_probabilities[label] * weights["learning"]
                     + (
                         (operational_probabilities or {}).get(label, 0.0)
                         * weights["operational"]
@@ -3341,6 +3575,10 @@ def _system_direction_forecast(
                     "regimeTransition": {
                         label: round(value * 100, 1)
                         for label, value in regime_probabilities.items()
+                    },
+                    "errorLearning": {
+                        label: round(value * 100, 1)
+                        for label, value in error_learning_probabilities.items()
                     },
                     "operational": {
                         label: round(value * 100, 1)
@@ -3440,7 +3678,9 @@ def _system_direction_forecast(
             ),
             "detail": (
                 f"ML %{selected_ml_model.get('validationAccuracy') or 0} · "
-                f"Rejim %{transition_model.get('accuracy') or 0} doğrulama"
+                f"Rejim %{transition_model.get('accuracy') or 0} · "
+                f"Sapma ML %{error_learning_model.get('validationAccuracy') or 0} "
+                "doğrulama"
             ),
             "machineLearning": {
                 "name": selected_ml_name,
@@ -3457,6 +3697,17 @@ def _system_direction_forecast(
                 "testedHours": transition_model.get("testedHours", 0),
                 "validationAccuracy": transition_model.get("accuracy"),
             },
+            "errorLearning": {
+                "name": "Sapmalardan öğrenen hata düzeltme ML",
+                "available": bool(error_learning_model.get("available")),
+                "sampleCount": error_learning_model.get("sampleCount", 0),
+                "mistakeCount": error_learning_model.get("mistakeCount", 0),
+                "correctCount": error_learning_model.get("correctCount", 0),
+                "trainedThrough": error_learning_model.get("trainedThrough"),
+                "validationAccuracy": error_learning_model.get(
+                    "validationAccuracy"
+                ),
+            },
             "averageWeights": average_ensemble_weights,
         },
         "method": {
@@ -3469,7 +3720,10 @@ def _system_direction_forecast(
                 "performansına göre ağırlıklandırılır. KGÜP, tüketim tahmini, PTF "
                 "ve hava koşulları her iki modelde kontrollü etki yapar. Gün içi "
                 "model yalnızca o ana kadar yayımlanmış sistem yönü, YAL/YAT ve "
-                "PTF-SMF farkıyla tüketim tahmin hatasını kullanır. Hedef saatin "
+                "PTF-SMF farkıyla tüketim tahmin hatasını kullanır. Ayrı hata "
+                "düzeltme modeli, geçmiş yürüyen testlerdeki yanlış saatlere daha "
+                "fazla ağırlık vererek tekrar eden saat ve rejim geçişi sapmalarını "
+                "öğrenir. Hedef saatin "
                 "gerçekleşen yönü ile "
                 "sonradan kesinleşen UEVM-UEÇM değerleri tahmin girdisine alınmaz; "
                 "böylece sonuç sızıntısı engellenir. Resmî EPİAŞ tahmini değildir."
@@ -3521,6 +3775,14 @@ def _system_direction_forecast(
                 "validationAccuracy"
             ),
             "transitionAccuracy": transition_model.get("accuracy"),
+            "errorLearningSamples": error_learning_model.get("sampleCount", 0),
+            "errorLearningMistakes": error_learning_model.get(
+                "mistakeCount",
+                0,
+            ),
+            "errorLearningAccuracy": error_learning_model.get(
+                "validationAccuracy"
+            ),
             "ensembleWeights": average_ensemble_weights,
         },
         "calibrationSummary": {
@@ -3536,6 +3798,17 @@ def _system_direction_forecast(
                 1
                 for detail in calibration_by_hour.values()
                 if detail.get("changedDirection")
+            ),
+            "errorLearningAvailable": bool(
+                error_learning_model.get("available")
+            ),
+            "errorLearningSamples": error_learning_model.get("sampleCount", 0),
+            "errorLearningMistakes": error_learning_model.get(
+                "mistakeCount",
+                0,
+            ),
+            "errorLearningAccuracy": error_learning_model.get(
+                "validationAccuracy"
             ),
         },
         "qualityMetrics": calibration.get("qualityMetrics") or {},
@@ -3759,6 +4032,15 @@ def _system_direction_validation(
     }[status]
     wrong_hours = max(0, compared_hours - correct_hours)
     early_transition_hours = miss_reason_counts.get("early_transition", 0)
+    learning_summary = forecast.get("calibrationSummary") or {}
+    learning_detail = (
+        " Sapma öğrenimi "
+        f"{learning_summary.get('errorLearningMistakes', 0)} geçmiş hata ve "
+        f"{learning_summary.get('errorLearningSamples', 0)} doğrulanmış saatle "
+        "etkin."
+        if learning_summary.get("errorLearningAvailable")
+        else " Sapma öğrenimi güvenli eğitim eşiği için yeni hata örneklerini izliyor."
+    )
     if wrong_hours:
         analysis_note = (
             f"{wrong_hours} sapma analiz edildi"
@@ -3769,11 +4051,13 @@ def _system_direction_validation(
             )
             + " Son doğrulanmış sapmalar sonraki tahminlerin saat ve geçiş "
             "kalibrasyonunda sınırlı ağırlıkla kullanılır."
+            + learning_detail
         )
     else:
         analysis_note = (
             "Yayımlanan saatlerde sapma yok. Doğrulanan sonuçlar sonraki "
             "tahminlerin geriye dönük kalibrasyonuna eklenir."
+            + learning_detail
         )
     return {
         "date": validation_day.isoformat(),
@@ -3801,6 +4085,20 @@ def _system_direction_validation(
             "reasonCounts": miss_reason_counts,
             "earlyTransitionHours": early_transition_hours,
             "learningEnabled": True,
+            "errorLearningAvailable": bool(
+                learning_summary.get("errorLearningAvailable")
+            ),
+            "errorLearningSamples": learning_summary.get(
+                "errorLearningSamples",
+                0,
+            ),
+            "errorLearningMistakes": learning_summary.get(
+                "errorLearningMistakes",
+                0,
+            ),
+            "errorLearningAccuracy": learning_summary.get(
+                "errorLearningAccuracy"
+            ),
             "calibrationTestedDays": (
                 forecast.get("calibrationSummary") or {}
             ).get("testedDays", 0),
