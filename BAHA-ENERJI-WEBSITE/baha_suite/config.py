@@ -11,7 +11,7 @@ ASSET_VERSIONS: dict[str, int] = {
     "/portal-shell.css": 7,
     "/chart-fullscreen.css": 5,
     "/chart-fullscreen.js": 5,
-    "/suite-loading.js": 1,
+    "/suite-loading.js": 2,
     "/theme-sync.js": 2,
     "/command-center.js": 2,
     "/piyasa-suite.css": 33,
