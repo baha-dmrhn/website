@@ -39,15 +39,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  background: linear-gradient(135deg, #2d70ee, #1d9ad8);
-  box-shadow: 0 8px 18px rgba(47, 112, 238, .22);
 }
 
 .baha-suite-nav a.suite-nav-forecast:hover,
 .baha-suite-nav a.suite-nav-forecast[aria-current="page"] {
   color: #fff;
-  background: linear-gradient(135deg, #215fd2, #157fb7);
+  background: #2d70ee;
 }
 
 .baha-suite-nav .suite-nav-divider {
@@ -87,10 +84,15 @@ html[data-theme="dark"] .baha-suite-nav a[aria-current="page"] {
   background: #2d70ee;
 }
 
-html[data-theme="dark"] .baha-suite-nav a.suite-nav-forecast,
+html[data-theme="dark"] .baha-suite-nav a.suite-nav-forecast {
+  color: #b8c3d5;
+  background: transparent;
+}
+
+html[data-theme="dark"] .baha-suite-nav a.suite-nav-forecast:hover,
 html[data-theme="dark"] .baha-suite-nav a.suite-nav-forecast[aria-current="page"] {
   color: #fff;
-  background: linear-gradient(135deg, #2d70ee, #0f8cc8);
+  background: #2d70ee;
 }
 
 html[data-theme="dark"] .baha-suite-nav .suite-nav-divider {
