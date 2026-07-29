@@ -737,6 +737,7 @@ def _market_dashboard(
 
 
 DIRECTION_CATEGORIES: tuple[str, ...] = ("deficit", "surplus", "balanced")
+SYSTEM_DIRECTION_HISTORICAL_DAYS = 365
 DIRECTION_LABELS = {
     "deficit": "Enerji Açığı",
     "surplus": "Enerji Fazlası",
@@ -3387,8 +3388,11 @@ def _system_direction_forecast(
     if allow_past:
         if target_day > today:
             raise ValueError("Gerçek değerlerle karşılaştırmak için bugünden ileri tarih seçilemez.")
-        if target_day < today - timedelta(days=30):
-            raise ValueError("Tahmin doğrulaması son 30 gün için hazırlanır.")
+        if target_day < today - timedelta(days=SYSTEM_DIRECTION_HISTORICAL_DAYS):
+            raise ValueError(
+                "Geçmiş tahmin testi son "
+                f"{SYSTEM_DIRECTION_HISTORICAL_DAYS} gün için hazırlanır."
+            )
     elif target_day < today:
         raise ValueError("Tahmin tarihi bugünden önce olamaz.")
     if not allow_past and target_day > today + timedelta(days=7):
@@ -3403,7 +3407,8 @@ def _system_direction_forecast(
     cutoff_day = min(today, target_day - timedelta(days=1))
     cache_key = (
         f"v5-calendar-ledger:{target_day.isoformat()}:{cutoff_day.isoformat()}:"
-        f"{forecast_mode}:{current_tr.strftime('%Y%m%d%H')}"
+        f"{forecast_mode}:{'historical' if allow_past else 'live'}:"
+        f"{current_tr.strftime('%Y%m%d%H')}"
     )
     now = time.time()
     if not force_refresh:
@@ -3444,22 +3449,39 @@ def _system_direction_forecast(
                 raise
             warnings.append("Son günler ve haftalık örnekler alınamadı.")
 
-    for day in sorted(day for day in specs if day < recent_floor):
+    older_dates = sorted(day for day in specs if day < recent_floor)
+    older_batches: list[list[date]] = []
+    for day in older_dates:
+        if (
+            older_batches
+            and (day - older_batches[-1][0]).days <= 89
+        ):
+            older_batches[-1].append(day)
+        else:
+            older_batches.append([day])
+    for batch in older_batches:
+        batch_start = min(batch)
+        batch_end = max(batch)
         try:
             history = _system_direction_range(
-                day,
-                day,
+                batch_start,
+                batch_end,
                 client,
                 force_refresh=force_refresh,
             )
-            histories[day.isoformat()] = history.get("byDate", {}).get(
-                day.isoformat(),
-                [],
-            )
+            history_by_date = history.get("byDate", {})
+            for day in batch:
+                histories[day.isoformat()] = history_by_date.get(
+                    day.isoformat(),
+                    [],
+                )
         except URETIM.EpiasError as exc:
             if exc.status_code in {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN}:
                 raise
-            warnings.append(f"{day.isoformat()} örneği alınamadı.")
+            warnings.append(
+                f"{batch_start.isoformat()}–{batch_end.isoformat()} "
+                "referans aralığı alınamadı."
+            )
 
     history_index = _direction_history_index(calibration_history)
     target_actual_by_hour = history_index.get(target_day, {})
@@ -3539,9 +3561,12 @@ def _system_direction_forecast(
                     hourly_scores[neighbor][category] * factor
                 )
 
-    external_context = context_data
+    # Tarihsel testte sonradan kesinleşmiş hedef-gün girdilerinin yanlışlıkla
+    # modele sızmasını önlemek için canlı/dış bağlam tamamen kapatılır.
+    external_context = None if allow_past else context_data
     can_load_live_context = (
-        isinstance(client, URETIM.EpiasClient)
+        not allow_past
+        and isinstance(client, URETIM.EpiasClient)
         and today <= target_day <= today + timedelta(days=1)
     )
     if external_context is None and can_load_live_context:
@@ -3658,6 +3683,19 @@ def _system_direction_forecast(
             ),
         }
     )
+    if allow_past:
+        method_inputs.append(
+            {
+                "key": "historical-leakage-guard",
+                "label": "Geçmiş test koruması",
+                "status": "ready",
+                "statusLabel": "Kopya yok",
+                "detail": (
+                    f"Eğitim {cutoff_day.isoformat()} tarihinde kesildi · "
+                    "hedef günün gerçeği modele kapalı"
+                ),
+            }
+        )
     calibration_ready = calibration.get("testedDays", 0) >= 3
     method_inputs.append(
         {
@@ -4084,6 +4122,14 @@ def _system_direction_forecast(
         "targetDate": target_day.isoformat(),
         "targetLabel": target_label,
         "forecastMode": forecast_mode,
+        "historicalTest": bool(allow_past),
+        "trainingCutoffDate": cutoff_day.isoformat(),
+        "leakageGuard": {
+            "enabled": True,
+            "targetActualUsed": False,
+            "trainingCutoffDate": cutoff_day.isoformat(),
+            "actualComparisonStage": "after_forecast",
+        },
         "schedule": schedule,
         "generatedAt": (
             datetime.now(timezone.utc)
@@ -4255,12 +4301,107 @@ def _system_direction_forecast(
     if not allow_past and target_day >= today:
         ledger_status = _system_direction_ledger_store(payload)
     else:
-        ledger_status = {
-            "enabled": SYSTEM_DIRECTION_LEDGER_ENABLED,
-            "status": "reconstructed",
-            "rowCount": 0,
-            "insertedRows": 0,
-        }
+        historical_ledger = _system_direction_ledger_read(target_day)
+        if historical_ledger.get("available"):
+            recorded_by_hour = {
+                int(row["hour"]): row
+                for row in historical_ledger.get("rows", [])
+            }
+            locked_rows: list[dict[str, Any]] = []
+            locked_counts = {
+                category: 0 for category in DIRECTION_CATEGORIES
+            }
+            locked_confidences: list[float] = []
+            for hour in range(24):
+                recorded = recorded_by_hour.get(hour)
+                if not recorded:
+                    locked_rows.append(
+                        {
+                            "hour": hour,
+                            "time": f"{hour:02}:00",
+                            "category": "missing",
+                            "label": _direction_label("missing"),
+                            "confidence": 0.0,
+                            "probabilities": {},
+                            "support": 0,
+                            "mode": "recorded",
+                            "observed": False,
+                            "recorded": False,
+                            "context": {},
+                            "calibration": {},
+                            "modelContributions": {},
+                        }
+                    )
+                    continue
+                category = str(recorded["category"])
+                locked_counts[category] += 1
+                locked_confidences.append(float(recorded["confidence"]))
+                locked_rows.append(
+                    {
+                        **recorded,
+                        "support": 0,
+                        "mode": "recorded",
+                        "observed": False,
+                        "recorded": True,
+                        "context": {},
+                        "calibration": {},
+                        "modelContributions": {},
+                    }
+                )
+            payload["forecastRows"] = locked_rows
+            payload["forecastSource"] = "locked_ledger"
+            payload["summary"] = {
+                **payload["summary"],
+                "dominantCategory": (
+                    max(locked_counts, key=locked_counts.get)
+                    if sum(locked_counts.values())
+                    else "missing"
+                ),
+                "dominantLabel": _direction_label(
+                    max(locked_counts, key=locked_counts.get)
+                    if sum(locked_counts.values())
+                    else "missing"
+                ),
+                "predictedCounts": locked_counts,
+                "averageConfidence": (
+                    round(
+                        sum(locked_confidences) / len(locked_confidences),
+                        1,
+                    )
+                    if locked_confidences
+                    else 0.0
+                ),
+                "lowConfidenceHours": [
+                    row["time"]
+                    for row in locked_rows
+                    if (
+                        row["category"] in DIRECTION_CATEGORIES
+                        and row["confidence"] < 48
+                    )
+                ],
+                "observedHours": 0,
+                "forecastHours": len(recorded_by_hour),
+            }
+            payload["schedule"]["detail"] = (
+                f"{len(recorded_by_hour)} saatlik ilk yayın kaydı gösteriliyor. "
+                "Bu değerler sonradan yeniden hesaplanmadı."
+            )
+            ledger_status = {
+                "enabled": True,
+                "status": "locked",
+                "rowCount": len(recorded_by_hour),
+                "insertedRows": 0,
+                "targetDate": target_day.isoformat(),
+                "firstPublicationProtected": True,
+            }
+        else:
+            payload["forecastSource"] = "reconstructed"
+            ledger_status = {
+                "enabled": SYSTEM_DIRECTION_LEDGER_ENABLED,
+                "status": "reconstructed",
+                "rowCount": 0,
+                "insertedRows": 0,
+            }
     payload["forecastLedger"] = ledger_status
     method_inputs.append(
         {
@@ -4410,8 +4551,11 @@ def _system_direction_validation(
             raise ValueError("Geçerli bir karşılaştırma tarihi seçin.") from exc
     if validation_day > today:
         raise ValueError("Gerçek değerlerle karşılaştırmak için bugünden ileri tarih seçilemez.")
-    if validation_day < today - timedelta(days=30):
-        raise ValueError("Tahmin doğrulaması son 30 gün için hazırlanır.")
+    if validation_day < today - timedelta(days=SYSTEM_DIRECTION_HISTORICAL_DAYS):
+        raise ValueError(
+            "Tahmin doğrulaması son "
+            f"{SYSTEM_DIRECTION_HISTORICAL_DAYS} gün için hazırlanır."
+        )
 
     ledger_snapshot = _system_direction_ledger_read(validation_day)
     if ledger_snapshot.get("available"):
@@ -4588,6 +4732,12 @@ def _system_direction_validation(
         ),
         "forecastGeneratedAt": forecast.get("generatedAt"),
         "forecastSource": forecast_source,
+        "leakageGuard": {
+            "enabled": True,
+            "targetActualUsedForForecast": False,
+            "actualLoadedAfterForecast": True,
+            "forecastSource": forecast_source,
+        },
         "forecastLedger": {
             "available": bool(ledger_snapshot.get("available")),
             "recordedHours": int(ledger_snapshot.get("rowCount") or 0),
@@ -8694,12 +8844,18 @@ class RequestHandler(BaseHTTPRequestHandler):
             query = urllib.parse.parse_qs(parsed.query)
             target_date = query.get("date", [None])[0]
             force_refresh = query.get("refresh", ["0"])[0] in {"1", "true", "yes"}
+            historical_test = query.get("historical", ["0"])[0] in {
+                "1",
+                "true",
+                "yes",
+            }
             try:
                 self._json(
                     _system_direction_forecast(
                         target_date,
                         client,
                         force_refresh=force_refresh,
+                        allow_past=historical_test,
                     )
                 )
             except ValueError as exc:
