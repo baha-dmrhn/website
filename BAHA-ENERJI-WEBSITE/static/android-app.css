@@ -1,0 +1,129 @@
+/*
+ * Android APK presentation layer.
+ * This file is injected only when the request comes from BahaEnerjiAndroid.
+ * The public website keeps its existing desktop/mobile shell unchanged.
+ */
+
+html,
+body {
+  min-height: 100%;
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.baha-suite-nav,
+.suite-sidebar,
+.suite-sidebar-overlay,
+.suite-menu-button,
+.suite-sidebar-lock-button,
+.sidebar-lock-button,
+.suite-header-actions,
+.baha-suite-piyasa .sidebar,
+.baha-suite-piyasa .sidebar-overlay,
+.baha-suite-piyasa .menu-button,
+.baha-suite-piyasa .piyasa-header-actions {
+  display: none !important;
+}
+
+body.baha-suite-page,
+body.baha-suite-piyasa {
+  overflow-x: hidden;
+}
+
+.baha-suite-piyasa .main-content,
+.baha-suite-baraj #dashboard,
+.baha-suite-uretim main,
+.baha-suite-tuketim .consumption-main,
+.baha-suite-sistem .system-forecast-page {
+  width: auto !important;
+  min-height: 100% !important;
+  margin-left: 0 !important;
+  padding: 20px 14px 30px !important;
+}
+
+body.suite-sidebar-collapsed.baha-suite-baraj #dashboard,
+body.suite-sidebar-collapsed.baha-suite-uretim main,
+body.suite-sidebar-collapsed.baha-suite-tuketim .consumption-main,
+body.suite-sidebar-collapsed.baha-suite-sistem .system-forecast-page,
+.baha-suite-piyasa.suite-sidebar-collapsed .main-content {
+  margin-left: 0 !important;
+}
+
+.baha-suite-baraj .page-header,
+.baha-suite-uretim .hero,
+.baha-suite-tuketim .consumption-topbar,
+.baha-suite-sistem .system-hero,
+.baha-suite-piyasa .topbar {
+  min-height: 0 !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  padding-right: 0 !important;
+}
+
+.baha-suite-piyasa .topbar,
+.baha-suite-tuketim .consumption-topbar {
+  align-items: flex-start;
+}
+
+body.baha-suite-page .suite-footer,
+.baha-suite-piyasa .suite-footer {
+  margin-left: 0 !important;
+}
+
+.system-toolbar,
+.system-kpi,
+.system-panel,
+.consumption-panel,
+.baha-suite-piyasa .panel,
+.baha-suite-piyasa .metric-card,
+.baha-suite-baraj .card {
+  border-radius: 18px !important;
+}
+
+button,
+a,
+input,
+select {
+  touch-action: manipulation;
+}
+
+/* The Android app supplies its own native top bar on the login screen. */
+.login-layout {
+  min-height: 100% !important;
+  height: auto !important;
+}
+
+.login-layout .brand-panel,
+.login-layout .mobile-topbar {
+  display: none !important;
+}
+
+.login-layout .form-panel {
+  width: 100% !important;
+  min-height: 100% !important;
+  padding: 28px 18px !important;
+}
+
+.login-layout .form-wrap {
+  width: min(100%, 520px) !important;
+  margin: auto !important;
+}
+
+@media (max-width: 580px) {
+  .baha-suite-piyasa .main-content,
+  .baha-suite-baraj #dashboard,
+  .baha-suite-uretim main,
+  .baha-suite-tuketim .consumption-main,
+  .baha-suite-sistem .system-forecast-page {
+    padding: 16px 10px 24px !important;
+  }
+
+  .baha-suite-piyasa .topbar h1,
+  .baha-suite-baraj .page-title,
+  .baha-suite-uretim .hero h1,
+  .baha-suite-tuketim .consumption-topbar h1,
+  .baha-suite-sistem .system-hero h1 {
+    font-size: 25px !important;
+    line-height: 1.08 !important;
+  }
+}
