@@ -533,6 +533,72 @@ class SuiteHelpersTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertGreater(len(intraday), len(first))
 
+    def test_historical_forecast_never_requests_target_day_actuals(self):
+        target_day = datetime.now(APP.URETIM.TR_TZ).date() - timedelta(days=3)
+        requested_ranges = []
+
+        class StubClient:
+            def _post_json(self, endpoint, body):
+                if not endpoint.endswith("/system-direction"):
+                    raise AssertionError(endpoint)
+                start = date.fromisoformat(body["startDate"][:10])
+                end = date.fromisoformat(body["endDate"][:10])
+                requested_ranges.append((start, end))
+                items = []
+                current = start
+                while current <= end:
+                    for hour in range(24):
+                        direction = (
+                            "Enerji Açığı"
+                            if hour < 7
+                            else "Enerji Fazlası"
+                            if hour < 22
+                            else "Dengede"
+                        )
+                        items.append(
+                            {
+                                "date": (
+                                    f"{current.isoformat()}T"
+                                    f"{hour:02}:00:00+03:00"
+                                ),
+                                "hour": hour,
+                                "systemDirection": direction,
+                            }
+                        )
+                    current += timedelta(days=1)
+                return {"items": items}
+
+        with APP.SYSTEM_DIRECTION_HISTORY_CACHE_LOCK:
+            APP.SYSTEM_DIRECTION_HISTORY_CACHE.clear()
+        with APP.SYSTEM_DIRECTION_FORECAST_CACHE_LOCK:
+            APP.SYSTEM_DIRECTION_FORECAST_CACHE.clear()
+        with APP.SYSTEM_DIRECTION_MODEL_CACHE_LOCK:
+            APP.SYSTEM_DIRECTION_MODEL_CACHE.clear()
+
+        forecast = APP._system_direction_forecast(
+            target_day.isoformat(),
+            StubClient(),
+            force_refresh=True,
+            allow_past=True,
+        )
+
+        self.assertTrue(requested_ranges)
+        self.assertTrue(
+            all(end < target_day for _start, end in requested_ranges)
+        )
+        self.assertTrue(forecast["historicalTest"])
+        self.assertEqual(
+            forecast["trainingCutoffDate"],
+            (target_day - timedelta(days=1)).isoformat(),
+        )
+        self.assertFalse(forecast["leakageGuard"]["targetActualUsed"])
+        guard_inputs = [
+            item
+            for item in forecast["method"]["inputs"]
+            if item.get("key") == "historical-leakage-guard"
+        ]
+        self.assertEqual(guard_inputs[0]["statusLabel"], "Kopya yok")
+
     def test_softmax_direction_model_learns_repeating_classes(self):
         features = []
         labels = []
@@ -992,6 +1058,13 @@ class SuiteHelpersTests(unittest.TestCase):
         self.assertEqual(validation["rows"][9]["actualCategory"], "deficit")
         self.assertTrue(validation["rows"][9]["reason"])
         self.assertTrue(validation["analysis"]["learningEnabled"])
+        self.assertTrue(validation["leakageGuard"]["enabled"])
+        self.assertFalse(
+            validation["leakageGuard"]["targetActualUsedForForecast"]
+        )
+        self.assertTrue(
+            validation["leakageGuard"]["actualLoadedAfterForecast"]
+        )
         self.assertIn("last30", validation["qualityMetrics"]["windows"])
         self.assertEqual(len(validation["qualityMetrics"]["hours"]), 24)
         self.assertIn("sapma analiz edildi", validation["note"])
@@ -3058,15 +3131,19 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn('data-suite-scroll="#system-validation"', html)
         self.assertIn('id="system-validation"', html)
         self.assertIn('id="validationDate"', html)
+        self.assertIn('id="historicalForecastDate"', html)
+        self.assertIn('id="historicalForecastRun"', html)
+        self.assertIn('id="historicalForecastLive"', html)
+        self.assertIn("Geçmiş tahmin testi", html)
         self.assertIn('id="validationDirectionTimeline"', html)
         self.assertIn('id="validationHourlyQuality"', html)
         self.assertIn('id="validationHourLatest"', html)
         self.assertIn('data-suite-user-email', html)
         self.assertIn('id="sidebar-lock"', html)
         self.assertIn('href="/module-suite.css?v=47"', html)
-        self.assertIn('href="/system-direction-forecast.css?v=16"', html)
+        self.assertIn('href="/system-direction-forecast.css?v=17"', html)
         self.assertIn('src="/module-suite.js?v=12"', html)
-        self.assertIn('src="/system-direction-forecast.js?v=13"', html)
+        self.assertIn('src="/system-direction-forecast.js?v=14"', html)
         self.assertIn('class="suite-footer" data-suite-footer="sistem"', html)
         self.assertIn('id="suiteFooterUpdated"', html)
         self.assertNotIn('class="system-header-actions"', html)
@@ -3085,6 +3162,10 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn("actual-lane", script)
         self.assertIn("forecast-lane", script)
         self.assertIn("validationDate.max", script)
+        self.assertIn('params.set("historical", "1")', script)
+        self.assertIn("historicalForecastDate", script)
+        self.assertIn("activeHistoricalDate", script)
+        self.assertIn("isoDaysAgo(365)", script)
         self.assertIn("validationMount.replaceWith(validation)", script)
         self.assertIn("await loadValidation(force)", script)
         self.assertIn("contextTooltip", script)
@@ -3101,6 +3182,7 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn(".validation-direction-hour.miss", css)
         self.assertIn(".validation-direction-marker.forecast", css)
         self.assertIn(".validation-quality-cards", css)
+        self.assertIn(".history-picker-controls", css)
         self.assertIn("scroll-snap-type: x mandatory", css)
         self.assertIn(
             'html[data-theme="dark"] .validation-direction-marker.actual.waiting',
