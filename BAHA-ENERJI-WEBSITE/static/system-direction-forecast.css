@@ -85,7 +85,11 @@ body.baha-suite-sistem {
 
 .system-toolbar {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns:
+    minmax(180px, .8fr)
+    minmax(230px, 1fr)
+    minmax(390px, 1.35fr)
+    auto;
   gap: 16px;
   align-items: stretch;
   margin-bottom: 22px;
@@ -129,6 +133,47 @@ body.baha-suite-sistem {
 .system-toolbar button:disabled {
   cursor: wait;
   opacity: .72;
+}
+
+.system-toolbar > .system-history-picker {
+  gap: 8px;
+  justify-content: center;
+}
+
+.history-picker-controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.history-picker-controls input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(83, 120, 179, .34);
+  border-radius: 12px;
+  color: var(--system-ink);
+  background: rgba(255, 255, 255, .72);
+  font: inherit;
+  font-weight: 800;
+  color-scheme: light;
+}
+
+.system-toolbar .history-picker-controls button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(47, 112, 238, .22);
+  border-radius: 12px;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.system-toolbar .history-picker-controls button.secondary {
+  color: var(--system-blue);
+  background: rgba(47, 112, 238, .08);
 }
 
 .system-alert {
@@ -1215,6 +1260,19 @@ html[data-theme="dark"] .context-input {
   background: rgba(18, 30, 51, .86);
 }
 
+html[data-theme="dark"] .history-picker-controls input {
+  border-color: rgba(132, 168, 225, .28);
+  color: #f4f8ff;
+  background: rgba(9, 22, 43, .72);
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] .system-toolbar .history-picker-controls button.secondary {
+  color: #a9c8ff;
+  border-color: rgba(97, 148, 231, .32);
+  background: rgba(47, 112, 238, .14);
+}
+
 html[data-theme="dark"] .sample-table td {
   color: #f6fbff;
 }
@@ -1384,6 +1442,19 @@ html[data-theme="dark"] .system-note {
 
   .system-toolbar button {
     min-height: 58px;
+  }
+
+  .history-picker-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .history-picker-controls input {
+    grid-column: 1 / -1;
+    height: 50px;
+  }
+
+  .system-toolbar .history-picker-controls button {
+    min-height: 48px;
   }
 
   .system-panel > header {
