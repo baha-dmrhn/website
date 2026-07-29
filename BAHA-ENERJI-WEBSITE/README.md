@@ -71,6 +71,28 @@ modele geri döner. Dış girdiler 30 dakika önbellekte tutulur; tahmin önbell
 aynı veriler için gereksiz EPİAŞ çağrısı yapılmasını engeller. Bu sonuç resmî
 EPİAŞ tahmini değildir.
 
+Model ayrıca Türkiye'deki resmî tatil, dini bayram, arife ve köprü gün
+etkilerini ayrı takvim özellikleri olarak kullanır. Dini bayramlar takvimde
+kaydığı için geçmiş yıl örnekleri aynı ay/gün yerine aynı bayram günüyle
+eşleştirilir. Okul tatili dönemi de yaklaşık bir gün-tipi sinyali olarak
+değerlendirilir.
+
+Sistem yönü tahmininde kullanıcıya ilk kez yayımlanan her saat, SQLite tahmin
+kayıt defterine `INSERT OR IGNORE` mantığıyla yazılır. Sonraki yenilemeler ilk
+kaydı değiştirmez; doğrulama ekranı mümkün olduğunda yeniden hesaplanan sonuç
+yerine bu kilitli ilk yayını gerçek EPİAŞ yönüyle karşılaştırır. Bu işlem yeni
+bir EPİAŞ isteği üretmez.
+
+- `BAHA_FORECAST_LEDGER_ENABLED`: varsayılan `true`
+- `BAHA_FORECAST_LEDGER_PATH`: varsayılan
+  `BAHA-ENERJI-WEBSITE/.forecast-ledger/system-direction.sqlite3`
+
+Render'ın geçici dosya sistemi servis yeniden oluşturulduğunda silinebilir.
+Kayıt defterinin deploy'lar arasında korunması isteniyorsa
+`BAHA_FORECAST_LEDGER_PATH` kalıcı bir disk yoluna verilmelidir. Kalıcı disk
+tanımlanmadan kayıt defteri çalışan instance boyunca koruma sağlar fakat yeni
+deploy sonrasında garanti vermez.
+
 ## Yerel çalıştırma
 
 Proje ana klasöründeyken:
