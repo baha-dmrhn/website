@@ -3,6 +3,7 @@ import http.client
 import gzip
 import json
 import io
+import os
 import sys
 import threading
 import unittest
@@ -14,6 +15,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+os.environ.setdefault("BAHA_FORECAST_LEDGER_ENABLED", "false")
 SPEC = importlib.util.spec_from_file_location("baha_suite_test_app", ROOT / "app.py")
 APP = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = APP
@@ -21,6 +23,79 @@ SPEC.loader.exec_module(APP)
 
 
 class SuiteHelpersTests(unittest.TestCase):
+    def test_turkey_calendar_marks_holidays_eves_and_bridge_days(self):
+        holiday = APP._turkey_calendar_context(date(2026, 7, 15))
+        religious_eve = APP._turkey_calendar_context(date(2026, 5, 26))
+        bridge_day = APP._turkey_calendar_context(date(2026, 4, 24))
+
+        self.assertTrue(holiday["isHoliday"])
+        self.assertEqual(holiday["dayType"], "national_holiday")
+        self.assertTrue(religious_eve["isEve"])
+        self.assertEqual(religious_eve["holidayKey"], "sacrifice-eve")
+        self.assertTrue(bridge_day["isBridgeDay"])
+
+    def test_holiday_calendar_matches_moving_religious_holiday(self):
+        target = date(2026, 3, 20)
+        matching = APP._matching_holiday_date(target, 2025)
+        self.assertEqual(matching, date(2025, 3, 30))
+
+        same_holiday_weight = APP._system_direction_sample_weight(
+            target,
+            matching,
+            {"holiday_calendar"},
+        )
+        regular_weight = APP._system_direction_sample_weight(
+            target,
+            date(2025, 3, 31),
+            {"calendar_yearly"},
+        )
+        self.assertGreater(same_holiday_weight, regular_weight)
+
+    def test_system_direction_ledger_keeps_first_published_hour(self):
+        original_enabled = APP.SYSTEM_DIRECTION_LEDGER_ENABLED
+        original_path = APP.SYSTEM_DIRECTION_LEDGER_PATH
+        ledger_path = ROOT / "tests" / ".system-direction-ledger-test.sqlite3"
+        try:
+            ledger_path.unlink(missing_ok=True)
+            APP.SYSTEM_DIRECTION_LEDGER_ENABLED = True
+            APP.SYSTEM_DIRECTION_LEDGER_PATH = ledger_path
+            payload = {
+                "targetDate": "2026-07-30",
+                "forecastMode": "day_ahead",
+                "generatedAt": "2026-07-29T15:00:00Z",
+                "calendarContext": {"label": "Normal iş günü"},
+                "forecastRows": [
+                    {
+                        "hour": 0,
+                        "category": "deficit",
+                        "label": "Enerji Açığı",
+                        "confidence": 72.0,
+                        "probabilities": {
+                            "deficit": 72,
+                            "surplus": 20,
+                            "balanced": 8,
+                        },
+                        "observed": False,
+                    }
+                ],
+            }
+            first = APP._system_direction_ledger_store(payload)
+            payload["forecastRows"][0]["category"] = "surplus"
+            payload["forecastRows"][0]["label"] = "Enerji Fazlası"
+            second = APP._system_direction_ledger_store(payload)
+            stored = APP._system_direction_ledger_read(
+                date(2026, 7, 30)
+            )
+
+            self.assertEqual(first["insertedRows"], 1)
+            self.assertEqual(second["insertedRows"], 0)
+            self.assertEqual(stored["rowCount"], 1)
+            self.assertEqual(stored["rows"][0]["category"], "deficit")
+        finally:
+            APP.SYSTEM_DIRECTION_LEDGER_ENABLED = original_enabled
+            APP.SYSTEM_DIRECTION_LEDGER_PATH = original_path
+            ledger_path.unlink(missing_ok=True)
+
     def test_username_login_limit_default_stays_below_epias_failed_attempt_limit(self):
         self.assertEqual(APP.LOGIN_USERNAME_LIMITER.max_attempts, 3)
         self.assertEqual(APP.LOGIN_USERNAME_LIMITER.window_seconds, 10)
@@ -2991,7 +3066,7 @@ class SuiteHttpTests(unittest.TestCase):
         self.assertIn('href="/module-suite.css?v=47"', html)
         self.assertIn('href="/system-direction-forecast.css?v=16"', html)
         self.assertIn('src="/module-suite.js?v=12"', html)
-        self.assertIn('src="/system-direction-forecast.js?v=12"', html)
+        self.assertIn('src="/system-direction-forecast.js?v=13"', html)
         self.assertIn('class="suite-footer" data-suite-footer="sistem"', html)
         self.assertIn('id="suiteFooterUpdated"', html)
         self.assertNotIn('class="system-header-actions"', html)
