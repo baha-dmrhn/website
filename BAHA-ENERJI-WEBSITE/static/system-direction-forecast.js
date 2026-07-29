@@ -66,6 +66,7 @@ function contextTooltip(row = {}) {
     ["Tarihsel", weights.history],
     ["ML", weights.ml],
     ["Rejim", weights.transition],
+    ["Sapma ML", weights.learning],
     ["Canlı", weights.operational],
   ]
     .filter(([, weight]) => Number(weight) > 0)
