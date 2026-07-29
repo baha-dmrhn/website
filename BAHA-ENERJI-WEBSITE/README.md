@@ -77,6 +77,14 @@ kaydığı için geçmiş yıl örnekleri aynı ay/gün yerine aynı bayram gün
 eşleştirilir. Okul tatili dönemi de yaklaşık bir gün-tipi sinyali olarak
 değerlendirilir.
 
+Üst araç çubuğundaki `Geçmiş tahmin testi` ile son 365 günden bir tarih
+seçilebilir. Tarihsel testte eğitim verisi seçilen tarihten bir gün önce
+kesilir. Seçilen günün gerçekleşen sistem yönü, YAL/YAT veya sonradan
+kesinleşen verileri tahmin girdisine alınmaz; gerçek yön yalnızca tahmin
+tamamlandıktan sonra ayrı doğrulama aşamasında karşılaştırılır. Kayıt
+defterinde o güne ait ilk yayın varsa öncelikle bu kilitli yayın kullanılır,
+yoksa sızıntısız geçmiş testi yeniden oluşturulur.
+
 Sistem yönü tahmininde kullanıcıya ilk kez yayımlanan her saat, SQLite tahmin
 kayıt defterine `INSERT OR IGNORE` mantığıyla yazılır. Sonraki yenilemeler ilk
 kaydı değiştirmez; doğrulama ekranı mümkün olduğunda yeniden hesaplanan sonuç
