@@ -65,6 +65,18 @@
       background: linear-gradient(90deg, #2f70ee, #68e1fd);
       animation: slide 1.05s ease-in-out infinite;
     }
+    button {
+      margin-top: 18px;
+      padding: 11px 18px;
+      border: 1px solid rgba(104, 225, 253, .35);
+      border-radius: 12px;
+      background: rgba(47, 112, 238, .16);
+      color: #dcebff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button[hidden] { display: none; }
     @keyframes slide {
       0% { transform: translateX(-110%); }
       100% { transform: translateX(260%); }
@@ -75,9 +87,10 @@
   <main role="status" aria-live="polite">
     <img src="/suite-assets/baha-logo.png" alt="Baha Enerji">
     <h1>Baha Enerji</h1>
-    <p>Panel hazırlanıyor...</p>
+    <p id="panelLoadingMessage">Panel hazırlanıyor...</p>
     <div class="bar" aria-hidden="true"><i></i></div>
+    <button id="panelLoadingRetry" type="button" hidden>Şimdi tekrar dene</button>
   </main>
-  <script src="/panel-loading.js" defer></script>
+  <script src="/panel-loading.js?v=2" defer></script>
 </body>
 </html>
