@@ -3,11 +3,23 @@
   if (!splash) return;
 
   const minVisibleMs = 420;
+  const maxVisibleMs = 12000;
   const startedAt = performance.now();
   let hideTimer = 0;
+  let safetyTimer = 0;
+
+  function clearTimers() {
+    window.clearTimeout(hideTimer);
+    window.clearTimeout(safetyTimer);
+  }
+
+  function armSafetyTimer() {
+    window.clearTimeout(safetyTimer);
+    safetyTimer = window.setTimeout(hideSplash, maxVisibleMs);
+  }
 
   function hideSplash() {
-    clearTimeout(hideTimer);
+    clearTimers();
     const wait = Math.max(0, minVisibleMs - (performance.now() - startedAt));
     hideTimer = window.setTimeout(() => {
       splash.classList.add("is-hidden");
@@ -16,11 +28,26 @@
   }
 
   function showSplash() {
-    clearTimeout(hideTimer);
+    clearTimers();
     if (!document.body.contains(splash)) {
       document.body.prepend(splash);
     }
     splash.classList.remove("is-hidden");
+    splash.style.animation = "none";
+    void splash.offsetWidth;
+    splash.style.animation = "";
+    armSafetyTimer();
+  }
+
+  function cleanLoadingBypassParameter() {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("baha_ready")) return;
+    url.searchParams.delete("baha_ready");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
   }
 
   function shouldShowForAnchor(anchor, event) {
@@ -42,20 +69,30 @@
 
   window.BahaSuiteLoading = { show: showSplash, hide: hideSplash };
 
+  cleanLoadingBypassParameter();
+  armSafetyTimer();
+  document.addEventListener("DOMContentLoaded", hideSplash, { once: true });
   window.addEventListener("load", hideSplash, { once: true });
-  window.addEventListener("pageshow", (event) => {
-    if (event.persisted) hideSplash();
-  });
+  window.addEventListener("pageshow", hideSplash);
   window.addEventListener("beforeunload", showSplash);
 
   document.addEventListener("click", (event) => {
     const anchor = event.target.closest?.("a[href]");
-    if (shouldShowForAnchor(anchor, event)) showSplash();
+    if (!shouldShowForAnchor(anchor, event)) return;
+    showSplash();
+    window.setTimeout(() => {
+      if (event.defaultPrevented) hideSplash();
+    }, 0);
   });
 
-  document.addEventListener("submit", () => showSplash());
+  document.addEventListener("submit", (event) => {
+    showSplash();
+    window.setTimeout(() => {
+      if (event.defaultPrevented) hideSplash();
+    }, 0);
+  });
 
-  if (document.readyState === "complete") {
+  if (document.readyState !== "loading") {
     hideSplash();
   }
 })();
