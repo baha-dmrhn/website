@@ -27,6 +27,15 @@
         <strong id="forecastModelName">Çok modelli tahmin</strong>
         <small id="forecastModelDetail">Model performansına göre ağırlıklı</small>
       </div>
+      <div class="system-history-picker">
+        <span>Geçmiş tahmin testi</span>
+        <div class="history-picker-controls">
+          <input id="historicalForecastDate" type="date" aria-label="Geçmiş tahmin tarihi">
+          <button id="historicalForecastRun" type="button">İncele</button>
+          <button id="historicalForecastLive" class="secondary" type="button" hidden>Canlıya dön</button>
+        </div>
+        <small id="historicalForecastHint">Gerçek değer tahmin tamamlandıktan sonra karşılaştırılır.</small>
+      </div>
       <button id="forecastRefresh" type="button">↻ Tahmini yenile</button>
     </section>
 
@@ -214,6 +223,6 @@
       <p>Bu ekran resmî EPİAŞ tahmini değildir. Geçmiş sistem yönü davranışlarını saat bazında okuyup operasyonel izleme için olasılık üretir.</p>
     </section>
   </main>
-  <script src="/system-direction-forecast.js?v=13" defer></script>
+  <script src="/system-direction-forecast.js?v=14" defer></script>
 </body>
 </html>
