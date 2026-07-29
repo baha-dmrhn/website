@@ -16,7 +16,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build signed release APK
+    name: Build installable APK
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,40 +45,56 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Prepare stable release signing
+      - name: Select APK signing mode
         shell: bash
         run: |
-          if [[ -z "$BAHA_ANDROID_KEYSTORE_BASE64" || \
-                -z "$BAHA_ANDROID_KEYSTORE_PASSWORD" || \
-                -z "$BAHA_ANDROID_KEY_ALIAS" || \
-                -z "$BAHA_ANDROID_KEY_PASSWORD" ]]; then
-            echo "::error::Android release imza secret'ları eksik. README'deki dört GitHub Secret değerini ekleyin."
-            exit 1
+          if [[ -n "$BAHA_ANDROID_KEYSTORE_BASE64" && \
+                -n "$BAHA_ANDROID_KEYSTORE_PASSWORD" && \
+                -n "$BAHA_ANDROID_KEY_ALIAS" && \
+                -n "$BAHA_ANDROID_KEY_PASSWORD" ]]; then
+            mkdir -p "$RUNNER_TEMP/baha-signing"
+            printf '%s' "$BAHA_ANDROID_KEYSTORE_BASE64" \
+              | base64 --decode \
+              > "$RUNNER_TEMP/baha-signing/baha-release.jks"
+            echo "BAHA_ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/baha-signing/baha-release.jks" >> "$GITHUB_ENV"
+            echo "BAHA_ANDROID_BUILD_TYPE=release" >> "$GITHUB_ENV"
+            echo "BAHA_ANDROID_APK_PATH=BAHA-ENERJI-ANDROID/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
+            echo "::notice::Kalıcı release anahtarıyla imzalı APK üretilecek."
+          else
+            echo "BAHA_ANDROID_BUILD_TYPE=debug" >> "$GITHUB_ENV"
+            echo "BAHA_ANDROID_APK_PATH=BAHA-ENERJI-ANDROID/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
+            echo "::notice::Release secret'ları bulunamadı; yerel JDK gerektirmeyen debug APK üretilecek."
           fi
-          mkdir -p "$RUNNER_TEMP/baha-signing"
-          printf '%s' "$BAHA_ANDROID_KEYSTORE_BASE64" \
-            | base64 --decode \
-            > "$RUNNER_TEMP/baha-signing/baha-release.jks"
-          echo "BAHA_ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/baha-signing/baha-release.jks" >> "$GITHUB_ENV"
 
-      - name: Build signed release APK
+      - name: Restore development signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: baha-android-debug-keystore-v1
+
+      - name: Build APK
         working-directory: BAHA-ENERJI-ANDROID
+        shell: bash
         run: |
           chmod +x ./gradlew
           ./gradlew --version
-          ./gradlew clean assembleRelease -PBAHA_SITE_URL="$BAHA_SITE_URL" --stacktrace
+          if [[ "$BAHA_ANDROID_BUILD_TYPE" == "release" ]]; then
+            ./gradlew clean assembleRelease -PBAHA_SITE_URL="$BAHA_SITE_URL" --stacktrace
+          else
+            ./gradlew clean assembleDebug -PBAHA_SITE_URL="$BAHA_SITE_URL" --stacktrace
+          fi
 
       - name: Verify APK signature
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify \
             --verbose \
             --print-certs \
-            BAHA-ENERJI-ANDROID/app/build/outputs/apk/release/app-release.apk
+            "$BAHA_ANDROID_APK_PATH"
 
       - name: Prepare installable APK
         run: |
           mkdir -p apk-output
-          cp BAHA-ENERJI-ANDROID/app/build/outputs/apk/release/app-release.apk apk-output/Baha-Enerji.apk
+          cp "$BAHA_ANDROID_APK_PATH" apk-output/Baha-Enerji.apk
 
       - name: Show APK output
         run: |
