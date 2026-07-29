@@ -24,6 +24,10 @@ GitHub üzerinden:
 4. Çalışma bittikten sonra **Baha-Enerji-APK** artifact'ini indir.
 5. ZIP içindeki `Baha-Enerji.apk` dosyasını Android telefona gönderip kur.
 
+Bilgisayara JDK veya Android Studio kurmak zorunlu değildir. Derleme GitHub
+Actions sunucusunda yapılır. Release imza secret'ları eklenmemişse workflow
+otomatik olarak kurulabilir bir debug APK üretir ve işlem hata vermez.
+
 Android Studio ile:
 
 1. Android Studio > Open
@@ -72,5 +76,7 @@ Repository Secrets değerlerini ekleyin:
 - `BAHA_ANDROID_KEY_ALIAS`: `baha-release`
 - `BAHA_ANDROID_KEY_PASSWORD`: Anahtar parolası
 
-Bu dört secret olmadan workflow bilinçli olarak durur; geçici bir debug
-anahtarıyla güncellenemeyen APK üretmez.
+Bu dört secret isteğe bağlıdır. Eklendiğinde kalıcı release anahtarıyla imzalı
+APK üretilir. Eklenmediğinde GitHub Actions, geliştirme anahtarını önbellekte
+tutarak debug APK üretir. GitHub önbelleği silinirse yeni APK'nın kurulabilmesi
+için telefondaki eski debug sürümünün bir kez kaldırılması gerekebilir.
