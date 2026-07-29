@@ -7965,6 +7965,7 @@ SUITE_LOADING_STYLE = """
     opacity: 1;
     visibility: visible;
     transition: opacity .28s ease, visibility .28s ease;
+    animation: baha-suite-loading-failsafe .01s linear 12s forwards;
   }
   .baha-suite-loading-screen.is-hidden {
     opacity: 0;
@@ -8021,6 +8022,13 @@ SUITE_LOADING_STYLE = """
   @keyframes baha-suite-loading-slide {
     0% { transform: translateX(-110%); }
     100% { transform: translateX(260%); }
+  }
+  @keyframes baha-suite-loading-failsafe {
+    to {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
   }
 </style>
 """
