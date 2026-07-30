@@ -1,4 +1,4 @@
-﻿import importlib.util
+import importlib.util
 import http.client
 import gzip
 import json
@@ -3553,8 +3553,8 @@ class SuiteHttpTests(unittest.TestCase):
         with urllib.request.urlopen(request, timeout=5) as response:
             html = response.read().decode("utf-8")
 
-        self.assertIn('href="/android-app.css?v=3"', html)
-        status, content, headers = self.get("/android-app.css?v=3")
+        self.assertIn('href="/android-app.css?v=4"', html)
+        status, content, headers = self.get("/android-app.css?v=4")
         css = content.decode("utf-8")
         self.assertEqual(status, 200)
         self.assertIn(".baha-suite-nav", css)
