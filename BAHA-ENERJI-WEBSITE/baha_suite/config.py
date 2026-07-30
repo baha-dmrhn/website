@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 ASSET_VERSIONS: dict[str, int] = {
-    "/android-app.css": 3,
+    "/android-app.css": 4,
     "/piyasa/app.js": 58,
     "/piyasa/styles.css": 37,
     "/piyasa-charts.js": 19,
