@@ -49,6 +49,22 @@ import java.util.Deque;
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 1107;
     private static final String APP_USER_AGENT = "BahaEnerjiAndroid/3.0";
+    private static final String HIDE_EMBEDDED_CHROME_SCRIPT =
+            "(function(){"
+                    + "var id='baha-native-chrome-hide';"
+                    + "var style=document.getElementById(id);"
+                    + "if(!style){"
+                    + "style=document.createElement('style');"
+                    + "style.id=id;"
+                    + "style.textContent='"
+                    + ".baha-suite-nav,"
+                    + ".suite-menu-button,"
+                    + ".baha-suite-piyasa .menu-button"
+                    + "{display:none!important;visibility:hidden!important}'"
+                    + ";(document.head||document.documentElement).appendChild(style);"
+                    + "}"
+                    + "return true;"
+                    + "})()";
     private static final long STARTUP_TIMEOUT_MS = 60000;
     private static final String[] TAB_PATHS = {
             "/piyasa/",
@@ -69,16 +85,14 @@ public class MainActivity extends Activity {
             "Baraj",
             "UEVM",
             "Tüketim",
-            "Tahmin",
-            "Profil"
+            "Tahmin"
     };
     private static final int[] BOTTOM_ICONS = {
             R.drawable.ic_market,
             R.drawable.ic_dam,
             R.drawable.ic_production,
             R.drawable.ic_consumption,
-            R.drawable.ic_forecast,
-            R.drawable.ic_profile
+            R.drawable.ic_forecast
     };
 
     private WebView webView;
@@ -191,12 +205,14 @@ public class MainActivity extends Activity {
                 startupLoading = false;
                 mainHandler.removeCallbacks(startupTimeout);
                 updateNativeChrome(url);
-                syncNativeTheme();
-                progressBar.setVisibility(View.GONE);
-                splashView.setVisibility(View.GONE);
-                errorView.setVisibility(View.GONE);
-                webView.setVisibility(View.VISIBLE);
-                CookieManager.getInstance().flush();
+                view.evaluateJavascript(HIDE_EMBEDDED_CHROME_SCRIPT, ignored -> {
+                    syncNativeTheme();
+                    progressBar.setVisibility(View.GONE);
+                    splashView.setVisibility(View.GONE);
+                    errorView.setVisibility(View.GONE);
+                    webView.setVisibility(View.VISIBLE);
+                    CookieManager.getInstance().flush();
+                });
             }
 
             @Override
@@ -463,13 +479,7 @@ public class MainActivity extends Activity {
             item.setGravity(Gravity.CENTER);
             item.setPadding(dp(1), dp(2), dp(1), 0);
             item.setContentDescription(BOTTOM_LABELS[index]);
-            item.setOnClickListener(view -> {
-                if (itemIndex < TAB_PATHS.length) {
-                    navigateToTab(itemIndex);
-                } else {
-                    showAppMenu(view);
-                }
-            });
+            item.setOnClickListener(view -> navigateToTab(itemIndex));
 
             ImageView icon = new ImageView(this);
             icon.setImageResource(BOTTOM_ICONS[index]);
