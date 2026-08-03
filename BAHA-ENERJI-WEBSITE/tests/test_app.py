@@ -3553,11 +3553,14 @@ class SuiteHttpTests(unittest.TestCase):
         with urllib.request.urlopen(request, timeout=5) as response:
             html = response.read().decode("utf-8")
 
-        self.assertIn('href="/android-app.css?v=4"', html)
-        status, content, headers = self.get("/android-app.css?v=4")
+        self.assertIn('href="/android-app.css?v=6"', html)
+        self.assertIn('class="sidebar"', html)
+        status, content, headers = self.get("/android-app.css?v=6")
         css = content.decode("utf-8")
         self.assertEqual(status, 200)
         self.assertIn(".baha-suite-nav", css)
+        self.assertIn(".suite-sidebar-overlay", css)
+        self.assertIn(".baha-suite-piyasa .sidebar", css)
         self.assertIn(".baha-suite-piyasa .main-content", css)
         self.assertIn(".baha-suite-piyasa .table-panel tbody tr", css)
         self.assertIn('content: "PANEL / GENEL BAKIŞ"', css)
@@ -3567,6 +3570,26 @@ class SuiteHttpTests(unittest.TestCase):
         )
         self.assertIn("scroll-snap-type: x mandatory", css)
         self.assertEqual(headers.get_content_type(), "text/css")
+
+        for path in (
+            "/baraj/",
+            "/uretim/",
+            "/tuketim/",
+            "/sistem-yonu-tahmini/",
+        ):
+            with self.subTest(path=path):
+                module_request = urllib.request.Request(
+                    self.base_url + path,
+                    headers={
+                        "Cookie": f"{APP.AUTH.cookie_name}={self.token}",
+                        "User-Agent": "Mozilla/5.0 BahaEnerjiAndroid/3.0",
+                        "Accept": "text/html",
+                    },
+                )
+                with urllib.request.urlopen(module_request, timeout=5) as response:
+                    module_html = response.read().decode("utf-8")
+                self.assertIn('class="suite-sidebar"', module_html)
+                self.assertIn('href="/android-app.css?v=6"', module_html)
 
     def test_consumption_api_and_xlsx_use_shared_epias_session(self):
         fixture = {
