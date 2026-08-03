@@ -36,7 +36,6 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -49,7 +48,7 @@ import java.util.Deque;
 public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 1107;
     private static final String APP_USER_AGENT = "BahaEnerjiAndroid/3.0";
-    private static final String HIDE_EMBEDDED_CHROME_SCRIPT =
+    private static final String CONFIGURE_EMBEDDED_CHROME_SCRIPT =
             "(function(){"
                     + "var id='baha-native-chrome-hide';"
                     + "var style=document.getElementById(id);"
@@ -60,10 +59,40 @@ public class MainActivity extends Activity {
                     + ".baha-suite-nav,"
                     + ".suite-menu-button,"
                     + ".baha-suite-piyasa .menu-button"
-                    + "{display:none!important;visibility:hidden!important}'"
+                    + "{display:none!important;visibility:hidden!important}"
+                    + ".suite-sidebar,.baha-suite-piyasa .sidebar"
+                    + "{display:flex!important}"
+                    + "@media(max-width:820px){"
+                    + ".suite-sidebar-overlay,.baha-suite-piyasa .sidebar-overlay"
+                    + "{display:block!important}"
+                    + "}'"
                     + ";(document.head||document.documentElement).appendChild(style);"
                     + "}"
+                    + "document.body.classList.remove("
+                    + "'sidebar-open','suite-sidebar-open','suite-sidebar-hovered','suite-sidebar-pinned'"
+                    + ");"
+                    + "var marketSidebar=document.querySelector('.baha-suite-piyasa .sidebar');"
+                    + "if(marketSidebar){marketSidebar.classList.remove('open');}"
                     + "return true;"
+                    + "})()";
+    private static final String TOGGLE_EMBEDDED_SIDEBAR_SCRIPT =
+            "(function(){"
+                    + "var body=document.body;"
+                    + "var market=document.querySelector('.baha-suite-piyasa .sidebar');"
+                    + "if(market){"
+                    + "var marketOpen=!market.classList.contains('open');"
+                    + "market.classList.toggle('open',marketOpen);"
+                    + "body.classList.toggle('sidebar-open',marketOpen);"
+                    + "return true;"
+                    + "}"
+                    + "var suite=document.querySelector('.suite-sidebar');"
+                    + "if(suite){"
+                    + "var suiteOpen=!body.classList.contains('suite-sidebar-open');"
+                    + "body.classList.remove('suite-sidebar-collapsed','suite-sidebar-hovered','suite-sidebar-pinned');"
+                    + "body.classList.toggle('suite-sidebar-open',suiteOpen);"
+                    + "return true;"
+                    + "}"
+                    + "return false;"
                     + "})()";
     private static final long STARTUP_TIMEOUT_MS = 60000;
     private static final String[] TAB_PATHS = {
@@ -72,13 +101,6 @@ public class MainActivity extends Activity {
             "/uretim/",
             "/tuketim/",
             "/sistem-yonu-tahmini/"
-    };
-    private static final String[] TAB_LABELS = {
-            "Piyasa",
-            "Baraj Aktif",
-            "UEVM · UEÇM",
-            "Tüketim",
-            "Sistem Yönü Tahmini"
     };
     private static final String[] BOTTOM_LABELS = {
             "Piyasa",
@@ -205,7 +227,7 @@ public class MainActivity extends Activity {
                 startupLoading = false;
                 mainHandler.removeCallbacks(startupTimeout);
                 updateNativeChrome(url);
-                view.evaluateJavascript(HIDE_EMBEDDED_CHROME_SCRIPT, ignored -> {
+                view.evaluateJavascript(CONFIGURE_EMBEDDED_CHROME_SCRIPT, ignored -> {
                     syncNativeTheme();
                     progressBar.setVisibility(View.GONE);
                     splashView.setVisibility(View.GONE);
@@ -415,7 +437,7 @@ public class MainActivity extends Activity {
         appBar.setElevation(0);
 
         appMenuButton = appBarButton("☰", "Uygulama menüsü");
-        appMenuButton.setOnClickListener(this::showAppMenu);
+        appMenuButton.setOnClickListener(this::toggleAppSidebar);
         appBar.addView(
                 appMenuButton,
                 new LinearLayout.LayoutParams(dp(48), dp(48))
@@ -516,56 +538,9 @@ public class MainActivity extends Activity {
         return navigation;
     }
 
-    private void showAppMenu(View anchor) {
-        PopupMenu popup = new PopupMenu(this, anchor);
-        for (int index = 0; index < TAB_LABELS.length; index++) {
-            popup.getMenu().add(10, 100 + index, index, TAB_LABELS[index]);
-        }
-        popup.getMenu().setGroupCheckable(10, true, true);
-        if (selectedTabIndex >= 0 && selectedTabIndex < TAB_LABELS.length) {
-            popup.getMenu().findItem(100 + selectedTabIndex).setChecked(true);
-        }
-        popup.getMenu().add(0, 1, 10, "Sayfayı yenile");
-        popup.getMenu().add(0, 2, 11, "Temayı değiştir");
-        popup.getMenu().add(0, 3, 12, "TV modu");
-        popup.getMenu().add(0, 4, 13, "Günlük rapor");
-        popup.getMenu().add(0, 5, 14, "EPİAŞ koruma");
-        popup.getMenu().add(0, 6, 15, "Oturumu kapat");
-        popup.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() >= 100 && item.getItemId() < 100 + TAB_PATHS.length) {
-                navigateToTab(item.getItemId() - 100);
-                return true;
-            }
-            switch (item.getItemId()) {
-                case 1:
-                    webView.reload();
-                    return true;
-                case 2:
-                    webView.evaluateJavascript(
-                            "(function(){var b=document.querySelector('[data-suite-theme-toggle],.theme-toggle');if(b){b.click();return true;}return false;})()",
-                            ignored -> webView.postDelayed(this::syncNativeTheme, 180)
-                    );
-                    return true;
-                case 3:
-                    webView.loadUrl(appUrl("/tv/"));
-                    return true;
-                case 4:
-                    webView.loadUrl(appUrl("/rapor"));
-                    return true;
-                case 5:
-                    webView.loadUrl(appUrl("/epias-koruma"));
-                    return true;
-                case 6:
-                    webView.evaluateJavascript(
-                            "fetch('/api/logout',{method:'POST',credentials:'include'}).finally(function(){location.replace('/oturum-kapatildi');})",
-                            null
-                    );
-                    return true;
-                default:
-                    return false;
-            }
-        });
-        popup.show();
+    private void toggleAppSidebar(View ignored) {
+        if (webView == null || selectedTabIndex < 0) return;
+        webView.evaluateJavascript(TOGGLE_EMBEDDED_SIDEBAR_SCRIPT, null);
     }
 
     private void navigateToTab(int tabIndex) {
@@ -625,6 +600,11 @@ public class MainActivity extends Activity {
         }
 
         appSectionTitle.setText(title);
+        if (appMenuButton != null) {
+            appMenuButton.setVisibility(
+                    selectedTabIndex >= 0 ? View.VISIBLE : View.INVISIBLE
+            );
+        }
         if (bottomNavigation != null) {
             bottomNavigation.setVisibility(
                     selectedTabIndex >= 0 ? View.VISIBLE : View.GONE
