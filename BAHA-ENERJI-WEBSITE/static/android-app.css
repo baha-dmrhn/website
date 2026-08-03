@@ -82,14 +82,10 @@ select:focus-visible {
 
 /* Uygulamada navigasyon native üst çubuk ve menü tarafından sağlanır. */
 .baha-suite-nav,
-.suite-sidebar,
-.suite-sidebar-overlay,
 .suite-menu-button,
 .suite-sidebar-lock-button,
 .sidebar-lock-button,
 .suite-header-actions,
-.baha-suite-piyasa .sidebar,
-.baha-suite-piyasa .sidebar-overlay,
 .baha-suite-piyasa .menu-button,
 .baha-suite-piyasa .piyasa-header-actions,
 .baha-suite-piyasa .topbar,
@@ -97,6 +93,55 @@ select:focus-visible {
 .baha-suite-uretim .hero,
 .baha-suite-tuketim .consumption-hero {
   display: none !important;
+}
+
+/* Native hamburger, her APK sekmesinde ayni sol cekmeceyi acar. */
+.suite-sidebar,
+.baha-suite-piyasa .sidebar {
+  position: fixed !important;
+  z-index: 100020 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  display: flex !important;
+  width: min(82vw, 280px) !important;
+  height: 100dvh !important;
+  transform: translateX(-105%) !important;
+  transition: transform 0.2s ease !important;
+}
+
+body.suite-sidebar-open .suite-sidebar,
+.baha-suite-piyasa .sidebar.open {
+  transform: translateX(0) !important;
+}
+
+body.suite-sidebar-open,
+.baha-suite-piyasa.sidebar-open {
+  overflow: hidden !important;
+}
+
+.suite-menu-close,
+.baha-suite-piyasa .menu-close {
+  display: grid !important;
+}
+
+.suite-sidebar-overlay,
+.baha-suite-piyasa .sidebar-overlay {
+  position: fixed !important;
+  z-index: 100010 !important;
+  inset: 0 !important;
+  display: block !important;
+  border: 0 !important;
+  background: rgba(7, 17, 38, 0.52) !important;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+body.suite-sidebar-open .suite-sidebar-overlay,
+.baha-suite-piyasa .sidebar.open + .sidebar-overlay {
+  opacity: 1;
+  visibility: visible;
 }
 
 .baha-suite-piyasa .main-content,
