@@ -1,0 +1,224 @@
+:root {
+  --bg: #eef3fa;
+  --card: rgba(255, 255, 255, 0.88);
+  --line: #d7e2f0;
+  --text: #091f3f;
+  --muted: #73849e;
+  --blue: #2d70ee;
+  --green: #2fbd84;
+  --amber: #f1a83b;
+  --red: #ef5968;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 80% 0%, rgba(45,112,238,.14), transparent 35%),
+    linear-gradient(180deg, #f4f7fb 0%, var(--bg) 100%);
+  font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.guard-page {
+  width: min(100% - 48px, 1500px);
+  margin: 0 auto;
+  padding: 118px 0 42px;
+}
+
+.guard-hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 22px;
+  align-items: end;
+  margin-bottom: 22px;
+}
+
+.guard-kicker,
+.guard-card > span {
+  margin: 0 0 10px;
+  color: #5f83c7;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.guard-hero h1 {
+  margin: 0;
+  font-size: clamp(36px, 4vw, 62px);
+  letter-spacing: -.05em;
+}
+
+.guard-hero p:not(.guard-kicker) {
+  max-width: 720px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.guard-back {
+  justify-self: end;
+  padding: 13px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--blue);
+  background: #fff;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.guard-status,
+.guard-card {
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 18px 48px rgba(24, 45, 82, .08);
+}
+
+.guard-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+}
+
+.guard-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 8px rgba(47, 189, 132, .13);
+}
+
+.guard-status.cooldown .guard-dot {
+  background: var(--amber);
+  box-shadow: 0 0 0 8px rgba(241, 168, 59, .16);
+}
+
+.guard-status.error .guard-dot {
+  background: var(--red);
+  box-shadow: 0 0 0 8px rgba(239, 89, 104, .13);
+}
+
+.guard-status strong { display: block; font-size: 18px; }
+.guard-status small { color: var(--muted); }
+
+.guard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.guard-card {
+  min-height: 300px;
+  padding: 24px;
+}
+
+.guard-card h2 {
+  margin: 0 0 22px;
+  font-size: 22px;
+  letter-spacing: -.03em;
+}
+
+.guard-card dl {
+  display: grid;
+  gap: 13px;
+  margin: 0;
+}
+
+.guard-card dl > div,
+.guard-log > div,
+.guard-notes li {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, .22);
+}
+
+.guard-card dt,
+.guard-log strong {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.guard-card dd {
+  max-width: 58%;
+  margin: 0;
+  font-weight: 900;
+  text-align: right;
+}
+
+.guard-wide {
+  min-height: 0;
+  margin-top: 18px;
+}
+
+.guard-log {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.guard-log > div {
+  display: block;
+  min-height: 92px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,255,255,.68);
+}
+
+.guard-log small {
+  display: block;
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.guard-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 30px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+}
+
+html[data-theme="dark"] body {
+  --bg: #081325;
+  --card: rgba(18, 34, 59, .9);
+  --line: #29415f;
+  --text: #f7fbff;
+  --muted: #9db0cb;
+  background: radial-gradient(circle at 80% 0%, rgba(45,112,238,.2), transparent 35%), #081325;
+}
+
+html[data-theme="dark"] .guard-back,
+html[data-theme="dark"] .guard-log > div {
+  background: rgba(20, 39, 68, .78);
+}
+
+@media (max-width: 1100px) {
+  .guard-grid,
+  .guard-log,
+  .guard-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .guard-page { width: min(100% - 28px, 1500px); padding-top: 96px; }
+  .guard-hero { grid-template-columns: 1fr; }
+  .guard-back { justify-self: start; }
+  .guard-grid,
+  .guard-log,
+  .guard-notes { grid-template-columns: 1fr; }
+  .guard-card { min-height: 0; }
+}
